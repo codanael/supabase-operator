@@ -1,0 +1,14 @@
+apiVersion: supabase.codanael.io/v1alpha1
+kind: Supabase
+metadata:
+  name: e2e-test
+  namespace: supabase-system
+spec:
+  database:
+    instances: 1
+    imageName: supabase/postgres:15.8.1.085
+    storage:
+      size: 1Gi
+  gateway:
+    gatewayClassName: envoy-gateway
+    baseDomain: supabase.local

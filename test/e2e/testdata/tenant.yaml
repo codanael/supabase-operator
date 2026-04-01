@@ -1,0 +1,17 @@
+apiVersion: supabase.codanael.io/v1alpha1
+kind: SupabaseTenant
+metadata:
+  name: acme
+  namespace: supabase-system
+spec:
+  tenantId: acme
+  supabaseRef: e2e-test
+  auth:
+    siteURL: https://app.acme.com
+    email:
+      enabled: true
+  storage:
+    backend: file
+  functions:
+    verifyJWT: false
+  resources: small

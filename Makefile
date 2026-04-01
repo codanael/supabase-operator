@@ -112,34 +112,11 @@ vet: ## Run go vet against code.
 test: manifests generate fmt vet setup-envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
 
-# TODO(user): To use a different vendor for e2e tests, modify the setup under 'tests/e2e'.
-# The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
-# CertManager is installed by default; skip with:
-# - CERT_MANAGER_INSTALL_SKIP=true
 KIND_CLUSTER ?= supabase-operator-test-e2e
 
-.PHONY: setup-test-e2e
-setup-test-e2e: ## Set up a Kind cluster for e2e tests if it does not exist
-	@command -v $(KIND) >/dev/null 2>&1 || { \
-		echo "Kind is not installed. Please install Kind manually."; \
-		exit 1; \
-	}
-	@case "$$($(KIND) get clusters)" in \
-		*"$(KIND_CLUSTER)"*) \
-			echo "Kind cluster '$(KIND_CLUSTER)' already exists. Skipping creation." ;; \
-		*) \
-			echo "Creating Kind cluster '$(KIND_CLUSTER)'..."; \
-			$(KIND) create cluster --name $(KIND_CLUSTER) ;; \
-	esac
-
 .PHONY: test-e2e
-test-e2e: setup-test-e2e manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
-	KIND_CLUSTER=$(KIND_CLUSTER) go test ./test/e2e/ -v -ginkgo.v
-	$(MAKE) cleanup-test-e2e
-
-.PHONY: cleanup-test-e2e
-cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
-	@$(KIND) delete cluster --name $(KIND_CLUSTER)
+test-e2e: manifests generate fmt vet ## Run E2E tests (requires kind cluster from 'make kind-up')
+	KIND_CLUSTER=$(KIND_CLUSTER) go test ./test/e2e/ -v -ginkgo.v -timeout 30m
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
@@ -365,23 +342,20 @@ catalog-push: ## Push a catalog image.
 
 .PHONY: test-unit
 test-unit: ## Run unit tests only (no cluster needed)
-	go test ./internal/resources/... ./internal/components/... ./api/... -v
+	go test ./internal/resources/... ./internal/components/... ./internal/credentials/... ./internal/database/... -v
 
 .PHONY: test-integration
 test-integration: manifests generate ## Run integration tests with envtest
-	KUBEBUILDER_ASSETS="$$($(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./internal/controller/... -v -timeout 5m
+	KUBEBUILDER_ASSETS="$$(setup-envtest use -p path)" go test ./internal/controller/... -v -timeout 5m
 
 .PHONY: kind-up
-kind-up: ## Create kind cluster and install prerequisites
-	kind create cluster --config test/kind-config.yaml --name supabase-operator
-	kubectl apply -f https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.25.1/cnpg-1.25.1.yaml
-	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
-	kubectl wait --for=condition=Available deployment/cnpg-controller-manager -n cnpg-system --timeout=120s
+kind-up: ## Create kind cluster with CNPG + Gateway API + Envoy Gateway
+	./test/e2e/setup.sh
 
 .PHONY: kind-down
 kind-down: ## Delete kind cluster
-	kind delete cluster --name supabase-operator
+	./test/e2e/teardown.sh
 
 .PHONY: kind-load
 kind-load: docker-build ## Load operator image into kind
-	kind load docker-image $$(IMG) --name supabase-operator
+	kind load docker-image $(IMG) --name $${KIND_CLUSTER:-supabase-operator-test-e2e}
