@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	componentAnalytics      = "analytics"
-	defaultAnalyticsImage   = "supabase/logflare:1.31.2"
-	analyticsPort           = 4000
+	componentAnalytics    = "analytics"
+	defaultAnalyticsImage = "supabase/logflare:1.31.2"
+	analyticsPort         = 4000
 )
 
 type AnalyticsBuilder struct {

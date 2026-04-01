@@ -29,7 +29,7 @@ type SupabaseTenantSpec struct {
 }
 
 type SupabaseTenantStatus struct {
-	Phase              string             `json:"phase,omitempty"`
+	Phase string `json:"phase,omitempty"`
 	// +optional
 	Conditions         []metav1.Condition `json:"conditions,omitempty"`
 	Namespace          string             `json:"namespace,omitempty"`
@@ -47,8 +47,8 @@ type SupabaseTenantStatus struct {
 type SupabaseTenant struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec   SupabaseTenantSpec   `json:"spec,omitempty"`
-	Status SupabaseTenantStatus `json:"status,omitempty"`
+	Spec              SupabaseTenantSpec   `json:"spec,omitempty"`
+	Status            SupabaseTenantStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

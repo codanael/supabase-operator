@@ -57,8 +57,8 @@ type S3CredentialsSpec struct {
 }
 
 type GatewaySpec struct {
-	GatewayClassName string         `json:"gatewayClassName"`
-	BaseDomain       string         `json:"baseDomain"`
+	GatewayClassName string `json:"gatewayClassName"`
+	BaseDomain       string `json:"baseDomain"`
 	// +optional
 	TLS *GatewayTLSSpec `json:"tls,omitempty"`
 }
@@ -127,7 +127,7 @@ type SupavisorSpec struct {
 }
 
 type ComponentStatus struct {
-	Ready bool   `json:"ready"`
+	Ready bool `json:"ready"`
 	// +optional
 	Message string `json:"message,omitempty"`
 	// +optional

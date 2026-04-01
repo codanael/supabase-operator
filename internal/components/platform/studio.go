@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	componentStudio      = "studio"
-	defaultStudioImage   = "supabase/studio:2026.03.16-sha-5528817"
-	studioPort           = 3000
+	componentStudio    = "studio"
+	defaultStudioImage = "supabase/studio:2026.03.16-sha-5528817"
+	studioPort         = 3000
 )
 
 type StudioBuilder struct {

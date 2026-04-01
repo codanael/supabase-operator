@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	componentSupavisor      = "supavisor"
-	defaultSupavisorImage   = "supabase/supavisor:2.7.4"
-	supavisorAPIPort        = 4000
-	supavisorSessionPort    = 5432
+	componentSupavisor       = "supavisor"
+	defaultSupavisorImage    = "supabase/supavisor:2.7.4"
+	supavisorAPIPort         = 4000
+	supavisorSessionPort     = 5432
 	supavisorTransactionPort = 6543
 )
 

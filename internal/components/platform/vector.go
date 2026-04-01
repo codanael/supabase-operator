@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	componentVector      = "vector"
-	defaultVectorImage   = "timberio/vector:0.53.0-alpine"
-	vectorPort           = 9001
+	componentVector    = "vector"
+	defaultVectorImage = "timberio/vector:0.53.0-alpine"
+	vectorPort         = 9001
 )
 
 type VectorBuilder struct {

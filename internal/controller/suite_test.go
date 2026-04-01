@@ -110,7 +110,7 @@ var _ = BeforeSuite(func() {
 	err = (&SupabaseReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("supabase-controller"),
+		Recorder: mgr.GetEventRecorderFor("supabase-controller"), //nolint:staticcheck // TODO: migrate to events.EventRecorder
 	}).SetupWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 

@@ -117,7 +117,7 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			continue
 		}
 
-		if result.Requeue || result.RequeueAfter > 0 {
+		if result.RequeueAfter > 0 {
 			// Still processing, mark as not ready but not error
 			setCondition(sb, condType, metav1.ConditionFalse, "Reconciling", "Component is being reconciled")
 			allReady = false

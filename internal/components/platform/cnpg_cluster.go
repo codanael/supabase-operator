@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	barmanapi "github.com/cloudnative-pg/barman-cloud/pkg/api"
+	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	machineryapi "github.com/cloudnative-pg/machinery/pkg/api"
 
 	v1alpha1 "github.com/codanael/supabase-operator/api/v1alpha1"

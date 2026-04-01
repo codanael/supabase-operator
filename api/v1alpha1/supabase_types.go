@@ -21,24 +21,24 @@ import (
 )
 
 type SupabaseSpec struct {
-	Database  DatabaseSpec  `json:"database"`
-	Gateway   GatewaySpec   `json:"gateway"`
+	Database DatabaseSpec `json:"database"`
+	Gateway  GatewaySpec  `json:"gateway"`
 	// +optional
-	Imgproxy  ImgproxySpec  `json:"imgproxy,omitempty"`
+	Imgproxy ImgproxySpec `json:"imgproxy,omitempty"`
 	// +optional
-	Studio    StudioSpec    `json:"studio,omitempty"`
+	Studio StudioSpec `json:"studio,omitempty"`
 	// +optional
 	Analytics AnalyticsSpec `json:"analytics,omitempty"`
 	// +optional
-	Vector    VectorSpec    `json:"vector,omitempty"`
+	Vector VectorSpec `json:"vector,omitempty"`
 	// +optional
 	Supavisor SupavisorSpec `json:"supavisor,omitempty"`
 	// +optional
-	Images    ImageOverrides `json:"images,omitempty"`
+	Images ImageOverrides `json:"images,omitempty"`
 }
 
 type SupabaseStatus struct {
-	Phase              string             `json:"phase,omitempty"`
+	Phase string `json:"phase,omitempty"`
 	// +optional
 	Conditions         []metav1.Condition `json:"conditions,omitempty"`
 	DatabaseReady      bool               `json:"databaseReady,omitempty"`
@@ -77,8 +77,8 @@ const (
 type Supabase struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec   SupabaseSpec   `json:"spec,omitempty"`
-	Status SupabaseStatus `json:"status,omitempty"`
+	Spec              SupabaseSpec   `json:"spec,omitempty"`
+	Status            SupabaseStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

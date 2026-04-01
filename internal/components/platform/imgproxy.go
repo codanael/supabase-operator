@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	componentImgproxy      = "imgproxy"
-	defaultImgproxyImage   = "darthsim/imgproxy:v3.30.1"
-	imgproxyPort           = 5001
+	componentImgproxy    = "imgproxy"
+	defaultImgproxyImage = "darthsim/imgproxy:v3.30.1"
+	imgproxyPort         = 5001
 )
 
 type ImgproxyBuilder struct {
