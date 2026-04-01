@@ -77,9 +77,12 @@ func (r *SupabaseTenantReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	log.Info("Reconciling SupabaseTenant", "tenant", tenantCR.Name, "tenantId", tenantCR.Spec.TenantID)
 
+	// Save a deep copy as patch base before any status modifications
+	statusPatch := client.MergeFrom(tenantCR.DeepCopy())
+
 	// 2. Handle deletion
 	if !tenantCR.DeletionTimestamp.IsZero() {
-		return r.finalize(ctx, tenantCR)
+		return r.finalize(ctx, tenantCR, statusPatch)
 	}
 
 	// 3. Ensure finalizer
@@ -107,7 +110,7 @@ func (r *SupabaseTenantReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			Message:            fmt.Sprintf("Cannot resolve supabaseRef %q: %v", tenantCR.Spec.SupabaseRef, err),
 			ObservedGeneration: tenantCR.Generation,
 		})
-		_ = r.Status().Update(ctx, tenantCR)
+		_ = r.Status().Patch(ctx, tenantCR, statusPatch)
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 	}
 
@@ -129,8 +132,8 @@ func (r *SupabaseTenantReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		if hasErr || !ready {
 			tenantCR.Status.Phase = v1alpha1.TenantPhaseProvisioning
 			tenantCR.Status.ObservedGeneration = tenantCR.Generation
-			if err := r.Status().Update(ctx, tenantCR); err != nil {
-				log.Error(err, "Failed to update tenant status")
+			if err := r.Status().Patch(ctx, tenantCR, statusPatch); err != nil {
+				log.Error(err, "Failed to patch tenant status")
 			}
 			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
@@ -175,8 +178,8 @@ func (r *SupabaseTenantReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	tenantCR.Status.Endpoint = fmt.Sprintf("%s.%s", tenantCR.Spec.TenantID, supabase.Spec.Gateway.BaseDomain)
 	tenantCR.Status.ObservedGeneration = tenantCR.Generation
 
-	if err := r.Status().Update(ctx, tenantCR); err != nil {
-		log.Error(err, "Failed to update tenant status")
+	if err := r.Status().Patch(ctx, tenantCR, statusPatch); err != nil {
+		log.Error(err, "Failed to patch tenant status")
 		return ctrl.Result{}, err
 	}
 
@@ -256,7 +259,7 @@ func (r *SupabaseTenantReconciler) reconcileTenantComponent(
 }
 
 // finalize handles tenant deletion.
-func (r *SupabaseTenantReconciler) finalize(ctx context.Context, tenantCR *v1alpha1.SupabaseTenant) (ctrl.Result, error) {
+func (r *SupabaseTenantReconciler) finalize(ctx context.Context, tenantCR *v1alpha1.SupabaseTenant, statusPatch client.Patch) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
 	if !controllerutil.ContainsFinalizer(tenantCR, tenantFinalizer) {
@@ -265,7 +268,7 @@ func (r *SupabaseTenantReconciler) finalize(ctx context.Context, tenantCR *v1alp
 
 	// Set phase to Deleting
 	tenantCR.Status.Phase = v1alpha1.TenantPhaseDeleting
-	if err := r.Status().Update(ctx, tenantCR); err != nil {
+	if err := r.Status().Patch(ctx, tenantCR, statusPatch); err != nil {
 		log.Error(err, "Failed to set Deleting phase")
 	}
 

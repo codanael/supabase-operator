@@ -70,9 +70,12 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	log.Info("Reconciling Supabase", "name", sb.Name)
 
+	// Save a deep copy as patch base before any status modifications
+	statusPatch := client.MergeFrom(sb.DeepCopy())
+
 	// Preflight: check that we can list CNPG clusters
 	if err := r.preflightChecks(ctx, sb); err != nil {
-		return r.updateStatus(ctx, sb, supabasev1alpha1.SupphaseError, err)
+		return r.updateStatus(ctx, sb, statusPatch, supabasev1alpha1.SupphaseError, err)
 	}
 
 	// Build platform context
@@ -152,7 +155,7 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	// Derive phase
 	phase := derivePhase(hasError, allReady, dbReady)
-	return r.updateStatus(ctx, sb, phase, nil)
+	return r.updateStatus(ctx, sb, statusPatch, phase, nil)
 }
 
 func (r *SupabaseReconciler) preflightChecks(ctx context.Context, sb *supabasev1alpha1.Supabase) error {
@@ -232,12 +235,12 @@ func (r *SupabaseReconciler) reconcileComponent(ctx context.Context, sb *supabas
 	return false, false
 }
 
-func (r *SupabaseReconciler) updateStatus(ctx context.Context, sb *supabasev1alpha1.Supabase, phase string, reconcileErr error) (ctrl.Result, error) {
+func (r *SupabaseReconciler) updateStatus(ctx context.Context, sb *supabasev1alpha1.Supabase, statusPatch client.Patch, phase string, reconcileErr error) (ctrl.Result, error) {
 	sb.Status.Phase = phase
 	sb.Status.ObservedGeneration = sb.Generation
 
-	if err := r.Status().Update(ctx, sb); err != nil {
-		logf.FromContext(ctx).Error(err, "Failed to update Supabase status")
+	if err := r.Status().Patch(ctx, sb, statusPatch); err != nil {
+		logf.FromContext(ctx).Error(err, "Failed to patch Supabase status")
 		return ctrl.Result{}, err
 	}
 
