@@ -360,3 +360,28 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+##@ Development (Custom)
+
+.PHONY: test-unit
+test-unit: ## Run unit tests only (no cluster needed)
+	go test ./internal/resources/... ./internal/components/... ./api/... -v
+
+.PHONY: test-integration
+test-integration: manifests generate ## Run integration tests with envtest
+	KUBEBUILDER_ASSETS="$$($(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./internal/controller/... -v -timeout 5m
+
+.PHONY: kind-up
+kind-up: ## Create kind cluster and install prerequisites
+	kind create cluster --config test/kind-config.yaml --name supabase-operator
+	kubectl apply -f https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.25.1/cnpg-1.25.1.yaml
+	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+	kubectl wait --for=condition=Available deployment/cnpg-controller-manager -n cnpg-system --timeout=120s
+
+.PHONY: kind-down
+kind-down: ## Delete kind cluster
+	kind delete cluster --name supabase-operator
+
+.PHONY: kind-load
+kind-load: docker-build ## Load operator image into kind
+	kind load docker-image $$(IMG) --name supabase-operator

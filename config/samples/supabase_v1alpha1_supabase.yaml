@@ -1,9 +1,14 @@
 apiVersion: supabase.codanael.io/v1alpha1
 kind: Supabase
 metadata:
-  labels:
-    app.kubernetes.io/name: supabase-operator
-    app.kubernetes.io/managed-by: kustomize
-  name: supabase-sample
+  name: main
+  namespace: supabase-system
 spec:
-  # TODO(user): Add fields here
+  database:
+    instances: 1
+    imageName: supabase/postgres:15.8.1.085
+    storage:
+      size: 10Gi
+  gateway:
+    gatewayClassName: envoy-gateway
+    baseDomain: supabase.local
