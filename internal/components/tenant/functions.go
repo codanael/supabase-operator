@@ -39,6 +39,7 @@ func (b *FunctionsBuilder) BuildDeployment() *appsv1.Deployment {
 	selectorLabels := resources.SelectorLabels(b.ctx.InstanceName(), componentFunctions)
 	selectorLabels[resources.LabelTenant] = b.ctx.TenantID()
 
+	preset := resources.GetPreset(b.ctx.Tenant.Spec.Resources)
 	functionsSpec := b.ctx.Tenant.Spec.Functions
 
 	env := []corev1.EnvVar{
@@ -53,6 +54,7 @@ func (b *FunctionsBuilder) BuildDeployment() *appsv1.Deployment {
 	return resources.NewDeploymentBuilder(b.ctx.TenantNamespace, b.resourceName()).
 		WithLabels(labels).
 		WithSelectorLabels(selectorLabels).
+		WithReplicas(preset.Replicas).
 		WithContainer(corev1.Container{
 			Name:    componentFunctions,
 			Image:   defaultFunctionsImage,
@@ -60,7 +62,8 @@ func (b *FunctionsBuilder) BuildDeployment() *appsv1.Deployment {
 			Ports: []corev1.ContainerPort{
 				{Name: "http", ContainerPort: functionsPort, Protocol: corev1.ProtocolTCP},
 			},
-			Env: env,
+			Env:       env,
+			Resources: preset.Resources,
 		}).
 		Build()
 }

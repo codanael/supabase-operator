@@ -39,6 +39,8 @@ func (b *AuthBuilder) BuildDeployment() *appsv1.Deployment {
 	selectorLabels := resources.SelectorLabels(b.ctx.InstanceName(), componentAuth)
 	selectorLabels[resources.LabelTenant] = b.ctx.TenantID()
 
+	preset := resources.GetPreset(b.ctx.Tenant.Spec.Resources)
+
 	// Read DB credentials secret key for auth-admin-password
 	dbPassword := b.ctx.DatabasePassword
 	authSpec := b.ctx.Tenant.Spec.Auth
@@ -68,13 +70,15 @@ func (b *AuthBuilder) BuildDeployment() *appsv1.Deployment {
 	return resources.NewDeploymentBuilder(b.ctx.TenantNamespace, b.resourceName()).
 		WithLabels(labels).
 		WithSelectorLabels(selectorLabels).
+		WithReplicas(preset.Replicas).
 		WithContainer(corev1.Container{
 			Name:  componentAuth,
 			Image: defaultAuthImage,
 			Ports: []corev1.ContainerPort{
 				{Name: "http", ContainerPort: authPort, Protocol: corev1.ProtocolTCP},
 			},
-			Env: env,
+			Env:       env,
+			Resources: preset.Resources,
 		}).
 		Build()
 }

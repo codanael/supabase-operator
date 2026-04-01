@@ -38,6 +38,8 @@ func (b *RealtimeBuilder) BuildDeployment() *appsv1.Deployment {
 	selectorLabels := resources.SelectorLabels(b.ctx.InstanceName(), componentRealtime)
 	selectorLabels[resources.LabelTenant] = b.ctx.TenantID()
 
+	preset := resources.GetPreset(b.ctx.Tenant.Spec.Resources)
+
 	env := []corev1.EnvVar{
 		{Name: "PORT", Value: fmt.Sprintf("%d", realtimePort)},
 		{Name: "DB_HOST", Value: b.ctx.DatabaseHost},
@@ -58,13 +60,15 @@ func (b *RealtimeBuilder) BuildDeployment() *appsv1.Deployment {
 	return resources.NewDeploymentBuilder(b.ctx.TenantNamespace, b.resourceName()).
 		WithLabels(labels).
 		WithSelectorLabels(selectorLabels).
+		WithReplicas(preset.Replicas).
 		WithContainer(corev1.Container{
 			Name:  componentRealtime,
 			Image: defaultRealtimeImage,
 			Ports: []corev1.ContainerPort{
 				{Name: "http", ContainerPort: realtimePort, Protocol: corev1.ProtocolTCP},
 			},
-			Env: env,
+			Env:       env,
+			Resources: preset.Resources,
 		}).
 		Build()
 }

@@ -40,6 +40,7 @@ func (b *StorageBuilder) BuildDeployment() *appsv1.Deployment {
 	selectorLabels := resources.SelectorLabels(b.ctx.InstanceName(), componentStorage)
 	selectorLabels[resources.LabelTenant] = b.ctx.TenantID()
 
+	preset := resources.GetPreset(b.ctx.Tenant.Spec.Resources)
 	storageSpec := b.ctx.Tenant.Spec.Storage
 
 	fileSizeLimit := "52428800"
@@ -86,13 +87,15 @@ func (b *StorageBuilder) BuildDeployment() *appsv1.Deployment {
 	return resources.NewDeploymentBuilder(b.ctx.TenantNamespace, b.resourceName()).
 		WithLabels(labels).
 		WithSelectorLabels(selectorLabels).
+		WithReplicas(preset.Replicas).
 		WithContainer(corev1.Container{
 			Name:  componentStorage,
 			Image: defaultStorageImage,
 			Ports: []corev1.ContainerPort{
 				{Name: "http", ContainerPort: storagePort, Protocol: corev1.ProtocolTCP},
 			},
-			Env: env,
+			Env:       env,
+			Resources: preset.Resources,
 		}).
 		Build()
 }
