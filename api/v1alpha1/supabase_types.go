@@ -58,6 +58,7 @@ const (
 
 const (
 	ConditionDatabaseReady  = "DatabaseReady"
+	ConditionBackupReady    = "BackupReady"
 	ConditionGatewayReady   = "GatewayReady"
 	ConditionImgproxyReady  = "ImgproxyReady"
 	ConditionStudioReady    = "StudioReady"

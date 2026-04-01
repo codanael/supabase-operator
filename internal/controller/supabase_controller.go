@@ -50,6 +50,7 @@ type SupabaseReconciler struct {
 // +kubebuilder:rbac:groups=supabase.codanael.io,resources=supabases/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=supabase.codanael.io,resources=supabases/finalizers,verbs=update
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=scheduledbackups,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
@@ -89,6 +90,7 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// Map component names to condition types
 	conditionMap := map[string]string{
 		"database":  supabasev1alpha1.ConditionDatabaseReady,
+		"backup":    supabasev1alpha1.ConditionBackupReady,
 		"gateway":   supabasev1alpha1.ConditionGatewayReady,
 		"imgproxy":  supabasev1alpha1.ConditionImgproxyReady,
 		"analytics": supabasev1alpha1.ConditionAnalyticsReady,
@@ -105,6 +107,7 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// If either fails, skip all downstream service components.
 	criticalComponents := []components.Component{
 		platform.NewCNPGCluster(pctx),
+		platform.NewScheduledBackup(pctx),
 		platform.NewGateway(pctx),
 	}
 
@@ -282,6 +285,7 @@ func (r *SupabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&cnpgv1.Cluster{}).
+		Owns(&cnpgv1.ScheduledBackup{}).
 		Owns(&gatewayv1.Gateway{}).
 		Named("supabase").
 		Complete(r)
