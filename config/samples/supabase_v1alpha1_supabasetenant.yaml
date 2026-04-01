@@ -1,9 +1,19 @@
 apiVersion: supabase.codanael.io/v1alpha1
 kind: SupabaseTenant
 metadata:
-  labels:
-    app.kubernetes.io/name: supabase-operator
-    app.kubernetes.io/managed-by: kustomize
-  name: supabasetenant-sample
+  name: acme
+  namespace: supabase-system
 spec:
-  # TODO(user): Add fields here
+  tenantId: acme
+  supabaseRef: main
+  auth:
+    siteURL: https://app.acme.com
+    email:
+      enabled: true
+      autoconfirm: false
+  storage:
+    backend: file
+    imageTransformation: true
+  functions:
+    verifyJWT: true
+  resources: small

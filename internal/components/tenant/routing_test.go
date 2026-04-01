@@ -65,11 +65,11 @@ func TestRouting_BuildHTTPRoute(t *testing.T) {
 
 		// Backend ref
 		require.Len(t, rule.BackendRefs, 1, "rule %d should have 1 backend ref", i)
-		backend := rule.BackendRefs[0].BackendRef.BackendObjectReference
+		backend := rule.BackendRefs[0].BackendObjectReference
 		assert.Equal(t, gatewayv1.ObjectName(exp.svcName), backend.Name, "rule %d svc name", i)
 		require.NotNil(t, backend.Namespace, "rule %d namespace should be set", i)
 		assert.Equal(t, gatewayv1.Namespace("supabase-acme"), *backend.Namespace, "rule %d namespace", i)
 		require.NotNil(t, backend.Port, "rule %d port should be set", i)
-		assert.Equal(t, gatewayv1.PortNumber(exp.port), *backend.Port, "rule %d port", i)
+		assert.Equal(t, exp.port, *backend.Port, "rule %d port", i)
 	}
 }

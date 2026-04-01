@@ -219,7 +219,7 @@ func main() {
 	if err := (&controller.SupabaseTenantReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("supabasetenant-controller"),
+		Recorder: mgr.GetEventRecorderFor("supabasetenant-controller"), //nolint:staticcheck
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SupabaseTenant")
 		os.Exit(1)

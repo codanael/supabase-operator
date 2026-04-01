@@ -10,8 +10,8 @@ import (
 
 func TestRenderInitScripts(t *testing.T) {
 	params := InitParams{
-		DatabaseName:        "test-tenant",
-		JWTSecret:           "super-secret-jwt-key",
+		DatabaseName:          "test-tenant",
+		JWTSecret:             "super-secret-jwt-key",
 		AuthenticatorPassword: "auth-pass-123",
 		AuthAdminPassword:     "auth-admin-pass-456",
 		StorageAdminPassword:  "storage-admin-pass-789",
@@ -42,8 +42,8 @@ func TestRenderInitScripts(t *testing.T) {
 
 func TestCombinedInitSQL(t *testing.T) {
 	params := InitParams{
-		DatabaseName:        "mydb",
-		JWTSecret:           "jwtsecret",
+		DatabaseName:          "mydb",
+		JWTSecret:             "jwtsecret",
 		AuthenticatorPassword: "authpw",
 		AuthAdminPassword:     "authadminpw",
 		StorageAdminPassword:  "storagepw",

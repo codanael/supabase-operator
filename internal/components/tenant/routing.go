@@ -60,7 +60,7 @@ func (r *RoutingComponent) buildHTTPRoute() *gatewayv1.HTTPRoute {
 		{"/functions/v1", fmt.Sprintf("%s-functions", tenantID), 9000},
 	}
 
-	var rules []gatewayv1.HTTPRouteRule
+	rules := make([]gatewayv1.HTTPRouteRule, 0, len(targets))
 	for _, t := range targets {
 		rules = append(rules, gatewayv1.HTTPRouteRule{
 			Matches: []gatewayv1.HTTPRouteMatch{
@@ -77,7 +77,7 @@ func (r *RoutingComponent) buildHTTPRoute() *gatewayv1.HTTPRoute {
 						BackendObjectReference: gatewayv1.BackendObjectReference{
 							Name:      gatewayv1.ObjectName(t.serviceName),
 							Namespace: ptrTo(gatewayv1.Namespace(tenantNS)),
-							Port:      ptrTo(gatewayv1.PortNumber(t.port)),
+							Port:      ptrTo(t.port),
 						},
 					},
 				},

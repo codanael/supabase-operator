@@ -51,17 +51,17 @@ type SupabaseTenantReconciler struct {
 	Recorder record.EventRecorder
 }
 
-//+kubebuilder:rbac:groups=supabase.codanael.io,resources=supabasetenants,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=supabase.codanael.io,resources=supabasetenants/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=supabase.codanael.io,resources=supabasetenants/finalizers,verbs=update
-//+kubebuilder:rbac:groups=supabase.codanael.io,resources=supabases,verbs=get;list;watch
-//+kubebuilder:rbac:groups=postgresql.cnpg.io,resources=databases,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=namespaces;services;secrets;configmaps,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
-//+kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=supabase.codanael.io,resources=supabasetenants,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=supabase.codanael.io,resources=supabasetenants/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=supabase.codanael.io,resources=supabasetenants/finalizers,verbs=update
+// +kubebuilder:rbac:groups=supabase.codanael.io,resources=supabases,verbs=get;list;watch
+// +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=databases,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=namespaces;services;secrets;configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *SupabaseTenantReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)

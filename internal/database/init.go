@@ -14,8 +14,8 @@ var scriptFS embed.FS
 
 // InitParams holds the parameters used to render SQL init scripts.
 type InitParams struct {
-	DatabaseName        string
-	JWTSecret           string
+	DatabaseName          string
+	JWTSecret             string
 	AuthenticatorPassword string
 	AuthAdminPassword     string
 	StorageAdminPassword  string
