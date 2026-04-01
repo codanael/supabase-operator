@@ -133,3 +133,168 @@ type ComponentStatus struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 }
+
+// --- Tenant-specific types ---
+
+// TenantAuthSpec configures the GoTrue auth service for a tenant.
+type TenantAuthSpec struct {
+	// +optional
+	SiteURL string `json:"siteURL,omitempty"`
+
+	// +optional
+	AdditionalRedirectURLs []string `json:"additionalRedirectURLs,omitempty"`
+
+	// +optional
+	DisableSignup bool `json:"disableSignup,omitempty"`
+
+	// +optional
+	Email *EmailAuthSpec `json:"email,omitempty"`
+
+	// +optional
+	SMTP *SMTPSpec `json:"smtp,omitempty"`
+
+	// +optional
+	External *OAuthProviders `json:"external,omitempty"`
+}
+
+// EmailAuthSpec configures email-based authentication.
+type EmailAuthSpec struct {
+	// +kubebuilder:default:=true
+	Enabled bool `json:"enabled,omitempty"`
+
+	// +optional
+	Autoconfirm bool `json:"autoconfirm,omitempty"`
+}
+
+// SMTPSpec configures SMTP for sending auth emails.
+type SMTPSpec struct {
+	Host string `json:"host"`
+
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	Port int32 `json:"port"`
+
+	// CredentialsSecret is the name of a Secret containing "username" and "password" keys.
+	CredentialsSecret string `json:"credentialsSecret"`
+
+	// +optional
+	SenderName string `json:"senderName,omitempty"`
+}
+
+// OAuthProviders configures external OAuth providers.
+type OAuthProviders struct {
+	// +optional
+	Google *OAuthProvider `json:"google,omitempty"`
+	// +optional
+	GitHub *OAuthProvider `json:"github,omitempty"`
+	// +optional
+	Azure *OAuthProvider `json:"azure,omitempty"`
+}
+
+// OAuthProvider configures a single OAuth provider.
+type OAuthProvider struct {
+	Enabled bool `json:"enabled"`
+
+	// CredentialsSecret is the name of a Secret containing "clientId" and "clientSecret" keys.
+	CredentialsSecret string `json:"credentialsSecret"`
+}
+
+// TenantRESTSpec configures the PostgREST API service.
+type TenantRESTSpec struct {
+	// +kubebuilder:default:={"public","graphql_public"}
+	// +optional
+	Schemas []string `json:"schemas,omitempty"`
+
+	// +kubebuilder:default:=1000
+	// +optional
+	MaxRows *int32 `json:"maxRows,omitempty"`
+}
+
+// TenantRealtimeSpec configures the Realtime service.
+type TenantRealtimeSpec struct {
+	ServiceSpec `json:",inline"`
+}
+
+// StorageBackend defines the backend type for tenant storage.
+// +kubebuilder:validation:Enum=file;s3;obc
+type StorageBackend string
+
+const (
+	StorageBackendFile StorageBackend = "file"
+	StorageBackendS3   StorageBackend = "s3"
+	StorageBackendOBC  StorageBackend = "obc"
+)
+
+// TenantStorageSpec configures the Storage service.
+type TenantStorageSpec struct {
+	// +kubebuilder:default:="file"
+	// +optional
+	Backend StorageBackend `json:"backend,omitempty"`
+
+	// +kubebuilder:default:=52428800
+	// +optional
+	FileSizeLimit *int64 `json:"fileSizeLimit,omitempty"`
+
+	// +optional
+	ImageTransformation bool `json:"imageTransformation,omitempty"`
+
+	// +optional
+	S3 *S3Config `json:"s3,omitempty"`
+
+	// +optional
+	ObjectBucket *ObjectBucketSpec `json:"objectBucket,omitempty"`
+}
+
+// S3Config configures S3-compatible storage.
+type S3Config struct {
+	Bucket string `json:"bucket"`
+	Region string `json:"region"`
+
+	// +optional
+	Endpoint string `json:"endpoint,omitempty"`
+
+	// +optional
+	ForcePathStyle bool `json:"forcePathStyle,omitempty"`
+
+	// CredentialsSecret is the name of a Secret containing "accessKeyId" and "secretAccessKey" keys.
+	CredentialsSecret string `json:"credentialsSecret"`
+}
+
+// ObjectBucketSpec configures OBC-based storage using the ObjectBucketClaim API.
+type ObjectBucketSpec struct {
+	// +optional
+	StorageClassName string `json:"storageClassName,omitempty"`
+
+	// +optional
+	AdditionalConfig map[string]string `json:"additionalConfig,omitempty"`
+
+	// +optional
+	BucketPrefix string `json:"bucketPrefix,omitempty"`
+}
+
+// TenantFunctionsSpec configures the Edge Functions runtime.
+type TenantFunctionsSpec struct {
+	// +kubebuilder:default:=true
+	// +optional
+	VerifyJWT bool `json:"verifyJWT,omitempty"`
+
+	// +optional
+	Source *FunctionSource `json:"source,omitempty"`
+}
+
+// FunctionSource defines where edge function code is loaded from.
+type FunctionSource struct {
+	// ConfigMapRef is the name of a ConfigMap containing function source code.
+	ConfigMapRef string `json:"configMapRef"`
+}
+
+// ResourcePreset defines a resource sizing preset.
+// +kubebuilder:validation:Enum=small;medium;large;custom
+type ResourcePreset string
+
+const (
+	ResourcePresetSmall  ResourcePreset = "small"
+	ResourcePresetMedium ResourcePreset = "medium"
+	ResourcePresetLarge  ResourcePreset = "large"
+	ResourcePresetCustom ResourcePreset = "custom"
+)

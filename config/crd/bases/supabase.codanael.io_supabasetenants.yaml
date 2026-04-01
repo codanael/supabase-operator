@@ -30,6 +30,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: SupabaseTenant is the Schema for the supabasetenants API.
         properties:
           apiVersion:
             description: |-
@@ -49,9 +50,268 @@ spec:
           metadata:
             type: object
           spec:
+            description: SupabaseTenantSpec defines the desired state of a SupabaseTenant.
             properties:
-              supabaseRef:
+              auth:
+                description: TenantAuthSpec configures the GoTrue auth service for
+                  a tenant.
+                properties:
+                  additionalRedirectURLs:
+                    items:
+                      type: string
+                    type: array
+                  disableSignup:
+                    type: boolean
+                  email:
+                    description: EmailAuthSpec configures email-based authentication.
+                    properties:
+                      autoconfirm:
+                        type: boolean
+                      enabled:
+                        default: true
+                        type: boolean
+                    type: object
+                  external:
+                    description: OAuthProviders configures external OAuth providers.
+                    properties:
+                      azure:
+                        description: OAuthProvider configures a single OAuth provider.
+                        properties:
+                          credentialsSecret:
+                            description: CredentialsSecret is the name of a Secret
+                              containing "clientId" and "clientSecret" keys.
+                            type: string
+                          enabled:
+                            type: boolean
+                        required:
+                        - credentialsSecret
+                        - enabled
+                        type: object
+                      github:
+                        description: OAuthProvider configures a single OAuth provider.
+                        properties:
+                          credentialsSecret:
+                            description: CredentialsSecret is the name of a Secret
+                              containing "clientId" and "clientSecret" keys.
+                            type: string
+                          enabled:
+                            type: boolean
+                        required:
+                        - credentialsSecret
+                        - enabled
+                        type: object
+                      google:
+                        description: OAuthProvider configures a single OAuth provider.
+                        properties:
+                          credentialsSecret:
+                            description: CredentialsSecret is the name of a Secret
+                              containing "clientId" and "clientSecret" keys.
+                            type: string
+                          enabled:
+                            type: boolean
+                        required:
+                        - credentialsSecret
+                        - enabled
+                        type: object
+                    type: object
+                  siteURL:
+                    type: string
+                  smtp:
+                    description: SMTPSpec configures SMTP for sending auth emails.
+                    properties:
+                      credentialsSecret:
+                        description: CredentialsSecret is the name of a Secret containing
+                          "username" and "password" keys.
+                        type: string
+                      host:
+                        type: string
+                      port:
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
+                        type: integer
+                      senderName:
+                        type: string
+                    required:
+                    - credentialsSecret
+                    - host
+                    - port
+                    type: object
+                type: object
+              functions:
+                description: TenantFunctionsSpec configures the Edge Functions runtime.
+                properties:
+                  source:
+                    description: FunctionSource defines where edge function code is
+                      loaded from.
+                    properties:
+                      configMapRef:
+                        description: ConfigMapRef is the name of a ConfigMap containing
+                          function source code.
+                        type: string
+                    required:
+                    - configMapRef
+                    type: object
+                  verifyJWT:
+                    default: true
+                    type: boolean
+                type: object
+              realtime:
+                description: TenantRealtimeSpec configures the Realtime service.
+                properties:
+                  enabled:
+                    default: true
+                    type: boolean
+                  replicas:
+                    default: 1
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  resources:
+                    description: ResourceRequirements describes the compute resource
+                      requirements.
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+                          This field depends on the
+                          DynamicResourceAllocation feature gate.
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                            request:
+                              description: |-
+                                Request is the name chosen for a request in the referenced claim.
+                                If empty, everything from the claim is made available, otherwise
+                                only the result of this request.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
+                type: object
+              resources:
+                default: small
+                description: Resources selects a resource sizing preset for tenant
+                  workloads.
+                enum:
+                - small
+                - medium
+                - large
+                - custom
                 type: string
+              rest:
+                description: TenantRESTSpec configures the PostgREST API service.
+                properties:
+                  maxRows:
+                    default: 1000
+                    format: int32
+                    type: integer
+                  schemas:
+                    default:
+                    - public
+                    - graphql_public
+                    items:
+                      type: string
+                    type: array
+                type: object
+              storage:
+                description: TenantStorageSpec configures the Storage service.
+                properties:
+                  backend:
+                    default: file
+                    description: StorageBackend defines the backend type for tenant
+                      storage.
+                    enum:
+                    - file
+                    - s3
+                    - obc
+                    type: string
+                  fileSizeLimit:
+                    default: 52428800
+                    format: int64
+                    type: integer
+                  imageTransformation:
+                    type: boolean
+                  objectBucket:
+                    description: ObjectBucketSpec configures OBC-based storage using
+                      the ObjectBucketClaim API.
+                    properties:
+                      additionalConfig:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      bucketPrefix:
+                        type: string
+                      storageClassName:
+                        type: string
+                    type: object
+                  s3:
+                    description: S3Config configures S3-compatible storage.
+                    properties:
+                      bucket:
+                        type: string
+                      credentialsSecret:
+                        description: CredentialsSecret is the name of a Secret containing
+                          "accessKeyId" and "secretAccessKey" keys.
+                        type: string
+                      endpoint:
+                        type: string
+                      forcePathStyle:
+                        type: boolean
+                      region:
+                        type: string
+                    required:
+                    - bucket
+                    - credentialsSecret
+                    - region
+                    type: object
+                type: object
+              supabaseRef:
+                description: SupabaseRef is the name of the parent Supabase resource
+                  (in the same namespace).
+                type: string
+              suspended:
+                description: Suspended, when true, scales tenant workloads to zero.
+                type: boolean
               tenantId:
                 maxLength: 63
                 minLength: 1
@@ -62,7 +322,90 @@ spec:
             - tenantId
             type: object
           status:
+            description: SupabaseTenantStatus defines the observed state of SupabaseTenant.
             properties:
+              components:
+                description: TenantComponentStatuses tracks readiness of each tenant
+                  component.
+                properties:
+                  auth:
+                    properties:
+                      message:
+                        type: string
+                      ready:
+                        type: boolean
+                      version:
+                        type: string
+                    required:
+                    - ready
+                    type: object
+                  database:
+                    properties:
+                      message:
+                        type: string
+                      ready:
+                        type: boolean
+                      version:
+                        type: string
+                    required:
+                    - ready
+                    type: object
+                  functions:
+                    properties:
+                      message:
+                        type: string
+                      ready:
+                        type: boolean
+                      version:
+                        type: string
+                    required:
+                    - ready
+                    type: object
+                  realtime:
+                    properties:
+                      message:
+                        type: string
+                      ready:
+                        type: boolean
+                      version:
+                        type: string
+                    required:
+                    - ready
+                    type: object
+                  rest:
+                    properties:
+                      message:
+                        type: string
+                      ready:
+                        type: boolean
+                      version:
+                        type: string
+                    required:
+                    - ready
+                    type: object
+                  routing:
+                    properties:
+                      message:
+                        type: string
+                      ready:
+                        type: boolean
+                      version:
+                        type: string
+                    required:
+                    - ready
+                    type: object
+                  storage:
+                    properties:
+                      message:
+                        type: string
+                      ready:
+                        type: boolean
+                      version:
+                        type: string
+                    required:
+                    - ready
+                    type: object
+                type: object
               conditions:
                 items:
                   description: Condition contains details for one aspect of the current
