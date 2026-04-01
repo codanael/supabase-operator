@@ -8,6 +8,8 @@ rules:
   - ""
   resources:
   - configmaps
+  - namespaces
+  - secrets
   - services
   verbs:
   - create
@@ -37,9 +39,34 @@ rules:
   - update
   - watch
 - apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - gateway.networking.k8s.io
   resources:
   - gateways
+  - httproutes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
   verbs:
   - create
   - delete
@@ -52,6 +79,7 @@ rules:
   - postgresql.cnpg.io
   resources:
   - clusters
+  - databases
   verbs:
   - create
   - delete
