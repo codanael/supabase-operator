@@ -37,6 +37,7 @@ import (
 	supabasev1alpha1 "github.com/codanael/supabase-operator/api/v1alpha1"
 	"github.com/codanael/supabase-operator/internal/components"
 	"github.com/codanael/supabase-operator/internal/components/platform"
+	custommetrics "github.com/codanael/supabase-operator/internal/metrics"
 )
 
 // SupabaseReconciler reconciles a Supabase object
@@ -58,6 +59,12 @@ type SupabaseReconciler struct {
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	start := time.Now()
+	reconcileResult := "success"
+	defer func() {
+		custommetrics.ReconcileDuration.WithLabelValues("supabase", reconcileResult).Observe(time.Since(start).Seconds())
+	}()
+
 	log := logf.FromContext(ctx)
 
 	// Fetch the Supabase instance
@@ -76,6 +83,7 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	// Preflight: check that we can list CNPG clusters
 	if err := r.preflightChecks(ctx, sb); err != nil {
+		reconcileResult = "error"
 		return r.updateStatus(ctx, sb, statusPatch, supabasev1alpha1.SupphaseError, err)
 	}
 
@@ -158,6 +166,9 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	// Derive phase
 	phase := derivePhase(hasError, allReady, dbReady)
+	if hasError {
+		reconcileResult = "error"
+	}
 	return r.updateStatus(ctx, sb, statusPatch, phase, nil)
 }
 

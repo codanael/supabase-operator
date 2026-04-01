@@ -40,6 +40,7 @@ import (
 	v1alpha1 "github.com/codanael/supabase-operator/api/v1alpha1"
 	"github.com/codanael/supabase-operator/internal/components"
 	"github.com/codanael/supabase-operator/internal/components/tenant"
+	custommetrics "github.com/codanael/supabase-operator/internal/metrics"
 )
 
 const tenantFinalizer = "supabase.codanael.io/tenant-finalizer"
@@ -64,6 +65,12 @@ type SupabaseTenantReconciler struct {
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *SupabaseTenantReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	start := time.Now()
+	reconcileResult := "success"
+	defer func() {
+		custommetrics.ReconcileDuration.WithLabelValues("supabasetenant", reconcileResult).Observe(time.Since(start).Seconds())
+	}()
+
 	log := logf.FromContext(ctx)
 
 	// 1. Get the SupabaseTenant
@@ -180,7 +187,26 @@ func (r *SupabaseTenantReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if err := r.Status().Patch(ctx, tenantCR, statusPatch); err != nil {
 		log.Error(err, "Failed to patch tenant status")
+		reconcileResult = "error"
 		return ctrl.Result{}, err
+	}
+
+	// Update tenant metrics
+	list := &v1alpha1.SupabaseTenantList{}
+	if err := r.List(ctx, list); err == nil {
+		total, ready, suspended := 0, 0, 0
+		for _, t := range list.Items {
+			total++
+			switch t.Status.Phase {
+			case v1alpha1.TenantPhaseReady:
+				ready++
+			case v1alpha1.TenantPhaseSuspended:
+				suspended++
+			}
+		}
+		custommetrics.TenantsTotal.Set(float64(total))
+		custommetrics.TenantsReady.Set(float64(ready))
+		custommetrics.TenantsSuspended.Set(float64(suspended))
 	}
 
 	// 11. Requeue interval
