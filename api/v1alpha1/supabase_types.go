@@ -20,39 +20,69 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// SupabaseSpec defines the desired state of Supabase.
 type SupabaseSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of Supabase. Edit supabase_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Database  DatabaseSpec  `json:"database"`
+	Gateway   GatewaySpec   `json:"gateway"`
+	// +optional
+	Imgproxy  ImgproxySpec  `json:"imgproxy,omitempty"`
+	// +optional
+	Studio    StudioSpec    `json:"studio,omitempty"`
+	// +optional
+	Analytics AnalyticsSpec `json:"analytics,omitempty"`
+	// +optional
+	Vector    VectorSpec    `json:"vector,omitempty"`
+	// +optional
+	Supavisor SupavisorSpec `json:"supavisor,omitempty"`
+	// +optional
+	Images    ImageOverrides `json:"images,omitempty"`
 }
 
-// SupabaseStatus defines the observed state of Supabase.
 type SupabaseStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Phase              string             `json:"phase,omitempty"`
+	// +optional
+	Conditions         []metav1.Condition `json:"conditions,omitempty"`
+	DatabaseReady      bool               `json:"databaseReady,omitempty"`
+	GatewayReady       bool               `json:"gatewayReady,omitempty"`
+	TenantCount        int32              `json:"tenantCount,omitempty"`
+	ObservedGeneration int64              `json:"observedGeneration,omitempty"`
 }
+
+const (
+	SupphasePending      = "Pending"
+	SupphaseProvisioning = "Provisioning"
+	SupphaseReady        = "Ready"
+	SupphaseDegraded     = "Degraded"
+	SupphaseError        = "Error"
+	SupphaseUpgrading    = "Upgrading"
+)
+
+const (
+	ConditionDatabaseReady  = "DatabaseReady"
+	ConditionGatewayReady   = "GatewayReady"
+	ConditionImgproxyReady  = "ImgproxyReady"
+	ConditionStudioReady    = "StudioReady"
+	ConditionAnalyticsReady = "AnalyticsReady"
+	ConditionVectorReady    = "VectorReady"
+	ConditionSupavisorReady = "SupavisorReady"
+)
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
+// +kubebuilder:printcolumn:name="DB Ready",type=boolean,JSONPath=`.status.databaseReady`
+// +kubebuilder:printcolumn:name="GW Ready",type=boolean,JSONPath=`.status.gatewayReady`
+// +kubebuilder:printcolumn:name="Tenants",type=integer,JSONPath=`.status.tenantCount`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
-// Supabase is the Schema for the supabases API.
 type Supabase struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
 	Spec   SupabaseSpec   `json:"spec,omitempty"`
 	Status SupabaseStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// SupabaseList contains a list of Supabase.
 type SupabaseList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

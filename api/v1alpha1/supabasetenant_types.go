@@ -20,39 +20,39 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// SupabaseTenantSpec defines the desired state of SupabaseTenant.
 type SupabaseTenantSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of SupabaseTenant. Edit supabasetenant_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z][a-z0-9-]*[a-z0-9]$`
+	TenantID    string `json:"tenantId"`
+	SupabaseRef string `json:"supabaseRef"`
 }
 
-// SupabaseTenantStatus defines the observed state of SupabaseTenant.
 type SupabaseTenantStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Phase              string             `json:"phase,omitempty"`
+	// +optional
+	Conditions         []metav1.Condition `json:"conditions,omitempty"`
+	Namespace          string             `json:"namespace,omitempty"`
+	Endpoint           string             `json:"endpoint,omitempty"`
+	ObservedGeneration int64              `json:"observedGeneration,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Tenant ID",type=string,JSONPath=`.spec.tenantId`
+// +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
+// +kubebuilder:printcolumn:name="Endpoint",type=string,JSONPath=`.status.endpoint`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
-// SupabaseTenant is the Schema for the supabasetenants API.
 type SupabaseTenant struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
 	Spec   SupabaseTenantSpec   `json:"spec,omitempty"`
 	Status SupabaseTenantStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// SupabaseTenantList contains a list of SupabaseTenant.
 type SupabaseTenantList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
