@@ -117,7 +117,8 @@ func (c *CNPGCluster) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	// Update mutable fields
+	// Update mutable fields using patch to avoid conflicts with mutating webhooks
+	patch := client.MergeFrom(existing.DeepCopy())
 	existing.Spec.Instances = desired.Spec.Instances
 	existing.Spec.ImageName = desired.Spec.ImageName
 	existing.Spec.StorageConfiguration = desired.Spec.StorageConfiguration
@@ -125,8 +126,8 @@ func (c *CNPGCluster) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	existing.Spec.Backup = desired.Spec.Backup
 	existing.Labels = desired.Labels
 
-	if updateErr := c.ctx.Client.Update(ctx, existing); updateErr != nil {
-		return ctrl.Result{}, fmt.Errorf("updating CNPG cluster: %w", updateErr)
+	if patchErr := c.ctx.Client.Patch(ctx, existing, patch); patchErr != nil {
+		return ctrl.Result{}, fmt.Errorf("patching CNPG cluster: %w", patchErr)
 	}
 
 	return ctrl.Result{}, nil

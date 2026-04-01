@@ -96,12 +96,13 @@ func (g *Gateway) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	// Update mutable fields
+	// Update mutable fields using patch to avoid conflicts
+	patch := client.MergeFrom(existing.DeepCopy())
 	existing.Spec = desired.Spec
 	existing.Labels = desired.Labels
 
-	if updateErr := g.ctx.Client.Update(ctx, existing); updateErr != nil {
-		return ctrl.Result{}, fmt.Errorf("updating Gateway: %w", updateErr)
+	if patchErr := g.ctx.Client.Patch(ctx, existing, patch); patchErr != nil {
+		return ctrl.Result{}, fmt.Errorf("patching Gateway: %w", patchErr)
 	}
 
 	return ctrl.Result{}, nil

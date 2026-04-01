@@ -66,10 +66,11 @@ func (s *ServiceComponent) Reconcile(ctx context.Context) (ctrl.Result, error) {
 			}
 			s.ctx.Recorder.Eventf(s.ctx.Supabase, "Normal", "Created", "Created ConfigMap %s", desiredCM.Name)
 		} else {
+			patch := client.MergeFrom(existingCM.DeepCopy())
 			existingCM.Data = desiredCM.Data
 			existingCM.Labels = desiredCM.Labels
-			if updateErr := s.ctx.Client.Update(ctx, existingCM); updateErr != nil {
-				return ctrl.Result{}, fmt.Errorf("updating configmap: %w", updateErr)
+			if patchErr := s.ctx.Client.Patch(ctx, existingCM, patch); patchErr != nil {
+				return ctrl.Result{}, fmt.Errorf("patching configmap: %w", patchErr)
 			}
 		}
 	}
@@ -92,10 +93,11 @@ func (s *ServiceComponent) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		}
 		s.ctx.Recorder.Eventf(s.ctx.Supabase, "Normal", "Created", "Created Deployment %s", desiredDeploy.Name)
 	} else {
+		patch := client.MergeFrom(existingDeploy.DeepCopy())
 		existingDeploy.Spec = desiredDeploy.Spec
 		existingDeploy.Labels = desiredDeploy.Labels
-		if updateErr := s.ctx.Client.Update(ctx, existingDeploy); updateErr != nil {
-			return ctrl.Result{}, fmt.Errorf("updating deployment: %w", updateErr)
+		if patchErr := s.ctx.Client.Patch(ctx, existingDeploy, patch); patchErr != nil {
+			return ctrl.Result{}, fmt.Errorf("patching deployment: %w", patchErr)
 		}
 	}
 
@@ -117,11 +119,12 @@ func (s *ServiceComponent) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		}
 		s.ctx.Recorder.Eventf(s.ctx.Supabase, "Normal", "Created", "Created Service %s", desiredSvc.Name)
 	} else {
+		patch := client.MergeFrom(existingSvc.DeepCopy())
 		existingSvc.Spec.Ports = desiredSvc.Spec.Ports
 		existingSvc.Spec.Selector = desiredSvc.Spec.Selector
 		existingSvc.Labels = desiredSvc.Labels
-		if updateErr := s.ctx.Client.Update(ctx, existingSvc); updateErr != nil {
-			return ctrl.Result{}, fmt.Errorf("updating service: %w", updateErr)
+		if patchErr := s.ctx.Client.Patch(ctx, existingSvc, patch); patchErr != nil {
+			return ctrl.Result{}, fmt.Errorf("patching service: %w", patchErr)
 		}
 	}
 

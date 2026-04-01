@@ -127,11 +127,12 @@ func (r *RoutingComponent) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	// Update
+	// Update using patch to avoid conflicts
+	patch := client.MergeFrom(existing.DeepCopy())
 	existing.Spec = desired.Spec
 	existing.Labels = desired.Labels
-	if updateErr := r.ctx.Client.Update(ctx, existing); updateErr != nil {
-		return ctrl.Result{}, fmt.Errorf("updating HTTPRoute: %w", updateErr)
+	if patchErr := r.ctx.Client.Patch(ctx, existing, patch); patchErr != nil {
+		return ctrl.Result{}, fmt.Errorf("patching HTTPRoute: %w", patchErr)
 	}
 
 	return ctrl.Result{}, nil
