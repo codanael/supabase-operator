@@ -12,6 +12,7 @@ type DeploymentBuilder struct {
 	name           string
 	labels         map[string]string
 	selectorLabels map[string]string
+	podAnnotations map[string]string
 	replicas       int32
 	containers     []corev1.Container
 	volumes        []corev1.Volume
@@ -32,6 +33,11 @@ func (b *DeploymentBuilder) WithLabels(labels map[string]string) *DeploymentBuil
 
 func (b *DeploymentBuilder) WithSelectorLabels(labels map[string]string) *DeploymentBuilder {
 	b.selectorLabels = labels
+	return b
+}
+
+func (b *DeploymentBuilder) WithPodAnnotations(annotations map[string]string) *DeploymentBuilder {
+	b.podAnnotations = annotations
 	return b
 }
 
@@ -64,7 +70,8 @@ func (b *DeploymentBuilder) Build() *appsv1.Deployment {
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: mergeLabels(b.selectorLabels, b.labels),
+					Labels:      mergeLabels(b.selectorLabels, b.labels),
+					Annotations: b.podAnnotations,
 				},
 				Spec: corev1.PodSpec{
 					Containers: b.containers,

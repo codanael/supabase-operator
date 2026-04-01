@@ -29,6 +29,10 @@ type TenantContext struct {
 
 	// Populated by DatabaseComponent during reconciliation:
 	DatabasePassword string
+
+	// Populated by SecretComponent during reconciliation:
+	// Hash of all secret data for rotation detection.
+	SecretHash string
 }
 
 // NewTenantContext creates a new TenantContext from the given resources.

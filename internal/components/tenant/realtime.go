@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/codanael/supabase-operator/internal/components"
+	"github.com/codanael/supabase-operator/internal/credentials"
 	"github.com/codanael/supabase-operator/internal/resources"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -61,6 +62,9 @@ func (b *RealtimeBuilder) BuildDeployment() *appsv1.Deployment {
 		WithLabels(labels).
 		WithSelectorLabels(selectorLabels).
 		WithReplicas(preset.Replicas).
+		WithPodAnnotations(map[string]string{
+			credentials.SecretHashAnnotation: b.ctx.SecretHash,
+		}).
 		WithContainer(corev1.Container{
 			Name:  componentRealtime,
 			Image: defaultRealtimeImage,

@@ -158,6 +158,9 @@ func (s *SecretComponent) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	// Populate DatabasePassword for downstream components
 	s.ctx.DatabasePassword = string(existingDB.Data["postgres-password"])
 
+	// Compute combined hash for secret rotation detection
+	s.ctx.SecretHash = credentials.ComputeSecretHash(existingJWT.Data, existingDB.Data)
+
 	return ctrl.Result{}, nil
 }
 
