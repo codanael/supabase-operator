@@ -51,7 +51,10 @@ var _ = Describe("SupabaseTenant Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: supabasev1alpha1.SupabaseTenantSpec{
+						TenantID:    "test-tenant",
+						SupabaseRef: "main",
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}

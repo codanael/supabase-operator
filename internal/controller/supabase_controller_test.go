@@ -17,68 +17,124 @@ limitations under the License.
 package controller
 
 import (
-	"context"
+	"time"
 
+	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	supabasev1alpha1 "github.com/codanael/supabase-operator/api/v1alpha1"
+	testutils "github.com/codanael/supabase-operator/test/utils"
 )
 
 var _ = Describe("Supabase Controller", func() {
-	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
+	const (
+		timeout  = 30 * time.Second
+		interval = 250 * time.Millisecond
+	)
 
-		ctx := context.Background()
+	Context("When creating a Supabase resource", func() {
+		const (
+			resourceName = "test-sb"
+			namespace    = "default"
+		)
 
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
-		}
-		supabase := &supabasev1alpha1.Supabase{}
+		var sb *supabasev1alpha1.Supabase
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind Supabase")
-			err := k8sClient.Get(ctx, typeNamespacedName, supabase)
-			if err != nil && errors.IsNotFound(err) {
-				resource := &supabasev1alpha1.Supabase{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
-					},
-					// TODO(user): Specify other spec details if needed.
-				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
-			}
+			sb = testutils.NewTestSupabase(resourceName, namespace)
+			Expect(k8sClient.Create(ctx, sb)).To(Succeed())
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
 			resource := &supabasev1alpha1.Supabase{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance Supabase")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: namespace}, resource)
+			if err == nil {
+				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			}
 		})
-		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
-			controllerReconciler := &SupabaseReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+
+		It("should create a CNPG Cluster", func() {
+			cluster := &cnpgv1.Cluster{}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{
+					Name:      resourceName + "-db",
+					Namespace: namespace,
+				}, cluster)
+			}, timeout, interval).Should(Succeed())
+
+			Expect(cluster.Spec.Instances).To(Equal(1))
+			Expect(cluster.Spec.StorageConfiguration.Size).To(Equal("1Gi"))
+		})
+
+		It("should create a Gateway", func() {
+			gw := &gatewayv1.Gateway{}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{
+					Name:      resourceName + "-gateway",
+					Namespace: namespace,
+				}, gw)
+			}, timeout, interval).Should(Succeed())
+
+			Expect(string(gw.Spec.GatewayClassName)).To(Equal("test-gateway-class"))
+		})
+
+		It("should create shared service Deployments", func() {
+			deploymentNames := []string{
+				resourceName + "-imgproxy",
+				resourceName + "-analytics",
+				resourceName + "-vector",
+				resourceName + "-supavisor",
+				resourceName + "-studio",
 			}
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+			for _, name := range deploymentNames {
+				deploy := &appsv1.Deployment{}
+				Eventually(func() error {
+					return k8sClient.Get(ctx, types.NamespacedName{
+						Name:      name,
+						Namespace: namespace,
+					}, deploy)
+				}, timeout, interval).Should(Succeed(), "Deployment %s should exist", name)
+			}
+		})
+
+		It("should create Services for shared components", func() {
+			serviceNames := []string{
+				resourceName + "-imgproxy",
+				resourceName + "-analytics",
+				resourceName + "-vector",
+				resourceName + "-supavisor",
+				resourceName + "-studio",
+			}
+
+			for _, name := range serviceNames {
+				svc := &corev1.Service{}
+				Eventually(func() error {
+					return k8sClient.Get(ctx, types.NamespacedName{
+						Name:      name,
+						Namespace: namespace,
+					}, svc)
+				}, timeout, interval).Should(Succeed(), "Service %s should exist", name)
+			}
+		})
+
+		It("should set status phase after reconciliation", func() {
+			Eventually(func() string {
+				updated := &supabasev1alpha1.Supabase{}
+				err := k8sClient.Get(ctx, types.NamespacedName{
+					Name:      resourceName,
+					Namespace: namespace,
+				}, updated)
+				if err != nil {
+					return ""
+				}
+				return updated.Status.Phase
+			}, timeout, interval).ShouldNot(BeEmpty())
 		})
 	})
 })
