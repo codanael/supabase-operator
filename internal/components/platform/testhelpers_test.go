@@ -3,6 +3,7 @@ package platform
 import (
 	v1alpha1 "github.com/codanael/supabase-operator/api/v1alpha1"
 	"github.com/codanael/supabase-operator/internal/components"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,4 +29,12 @@ func newTestSupabase() *v1alpha1.Supabase {
 
 func newTestPlatformContext(sb *v1alpha1.Supabase) *components.PlatformContext {
 	return &components.PlatformContext{Supabase: sb}
+}
+
+func envToMap(envs []corev1.EnvVar) map[string]string {
+	m := make(map[string]string, len(envs))
+	for _, e := range envs {
+		m[e.Name] = e.Value
+	}
+	return m
 }
