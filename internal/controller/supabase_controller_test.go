@@ -123,6 +123,18 @@ var _ = Describe("Supabase Controller", func() {
 			}
 		})
 
+		It("should create a Vector ConfigMap", func() {
+			cm := &corev1.ConfigMap{}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{
+					Name:      resourceName + "-vector-config",
+					Namespace: namespace,
+				}, cm)
+			}, timeout, interval).Should(Succeed())
+
+			Expect(cm.Data).To(HaveKey("vector.yml"))
+		})
+
 		It("should set status phase after reconciliation", func() {
 			Eventually(func() string {
 				updated := &supabasev1alpha1.Supabase{}

@@ -8,6 +8,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -43,6 +44,38 @@ func (b *VectorBuilder) image() string {
 	return defaultVectorImage
 }
 
+func (b *VectorBuilder) configMapName() string {
+	return fmt.Sprintf("%s-vector-config", b.ctx.InstanceName())
+}
+
+func (b *VectorBuilder) BuildConfigMap() *corev1.ConfigMap {
+	labels := resources.PlatformLabels(b.ctx.InstanceName(), componentVector)
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      b.configMapName(),
+			Namespace: b.ctx.Namespace(),
+			Labels:    labels,
+		},
+		Data: map[string]string{
+			"vector.yml": `# Minimal Vector config for Supabase Operator
+api:
+  enabled: true
+  address: "0.0.0.0:9001"
+sources:
+  internal_metrics:
+    type: internal_metrics
+sinks:
+  stdout:
+    type: console
+    inputs:
+      - internal_metrics
+    encoding:
+      codec: json
+`,
+		},
+	}
+}
+
 func (b *VectorBuilder) BuildDeployment() *appsv1.Deployment {
 	labels := resources.PlatformLabels(b.ctx.InstanceName(), componentVector)
 	selectorLabels := resources.SelectorLabels(b.ctx.InstanceName(), componentVector)
@@ -59,6 +92,23 @@ func (b *VectorBuilder) BuildDeployment() *appsv1.Deployment {
 				{Name: "api", ContainerPort: vectorPort, Protocol: corev1.ProtocolTCP},
 			},
 			Resources: b.ctx.Supabase.Spec.Vector.Resources,
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "vector-config",
+					MountPath: "/etc/vector",
+					ReadOnly:  true,
+				},
+			},
+		}).
+		WithVolumes(corev1.Volume{
+			Name: "vector-config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: b.configMapName(),
+					},
+				},
+			},
 		}).
 		Build()
 }

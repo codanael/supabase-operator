@@ -21,6 +21,13 @@ type ServiceComponentBuilder interface {
 	IsEnabled() bool
 }
 
+// ConfigMapProvider is an optional interface that ServiceComponentBuilders can
+// implement to provide a ConfigMap that should be reconciled alongside the
+// Deployment and Service.
+type ConfigMapProvider interface {
+	BuildConfigMap() *corev1.ConfigMap
+}
+
 // ServiceComponent wraps a ServiceComponentBuilder and implements the Component interface.
 type ServiceComponent struct {
 	ctx     *components.PlatformContext
@@ -38,6 +45,33 @@ func (s *ServiceComponent) Name() string {
 func (s *ServiceComponent) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	if !s.builder.IsEnabled() {
 		return ctrl.Result{}, nil
+	}
+
+	// Reconcile ConfigMap if the builder provides one
+	if cmProvider, ok := s.builder.(ConfigMapProvider); ok {
+		desiredCM := cmProvider.BuildConfigMap()
+		if err := controllerutil.SetControllerReference(s.ctx.Supabase, desiredCM, s.ctx.Scheme); err != nil {
+			return ctrl.Result{}, fmt.Errorf("setting owner reference on configmap: %w", err)
+		}
+
+		existingCM := &corev1.ConfigMap{}
+		err := s.ctx.Client.Get(ctx, client.ObjectKeyFromObject(desiredCM), existingCM)
+		if client.IgnoreNotFound(err) != nil {
+			return ctrl.Result{}, fmt.Errorf("getting configmap: %w", err)
+		}
+
+		if err != nil {
+			if createErr := s.ctx.Client.Create(ctx, desiredCM); createErr != nil {
+				return ctrl.Result{}, fmt.Errorf("creating configmap: %w", createErr)
+			}
+			s.ctx.Recorder.Eventf(s.ctx.Supabase, "Normal", "Created", "Created ConfigMap %s", desiredCM.Name)
+		} else {
+			existingCM.Data = desiredCM.Data
+			existingCM.Labels = desiredCM.Labels
+			if updateErr := s.ctx.Client.Update(ctx, existingCM); updateErr != nil {
+				return ctrl.Result{}, fmt.Errorf("updating configmap: %w", updateErr)
+			}
+		}
 	}
 
 	// Reconcile Deployment
@@ -105,11 +139,16 @@ func (s *ServiceComponent) Healthcheck(ctx context.Context) (bool, string, error
 		return false, "Deployment not found", client.IgnoreNotFound(err)
 	}
 
-	if deploy.Status.ReadyReplicas >= 1 && deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-		return true, fmt.Sprintf("%d/%d replicas ready", deploy.Status.ReadyReplicas, *deploy.Spec.Replicas), nil
+	replicas := int32(1)
+	if deploy.Spec.Replicas != nil {
+		replicas = *deploy.Spec.Replicas
 	}
 
-	return false, fmt.Sprintf("%d/%d replicas ready", deploy.Status.ReadyReplicas, *deploy.Spec.Replicas), nil
+	if deploy.Status.ReadyReplicas >= 1 && deploy.Status.ReadyReplicas == replicas {
+		return true, fmt.Sprintf("%d/%d replicas ready", deploy.Status.ReadyReplicas, replicas), nil
+	}
+
+	return false, fmt.Sprintf("%d/%d replicas ready", deploy.Status.ReadyReplicas, replicas), nil
 }
 
 func (s *ServiceComponent) Finalize(ctx context.Context) error {

@@ -19,11 +19,13 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -51,6 +53,7 @@ type SupabaseReconciler struct {
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gateways,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -59,7 +62,7 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// Fetch the Supabase instance
 	sb := &supabasev1alpha1.Supabase{}
 	if err := r.Get(ctx, req.NamespacedName, sb); err != nil {
-		if apierrors.IsNotFound(err) {
+		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
@@ -80,17 +83,6 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		Supabase: sb,
 	}
 
-	// Define component order
-	componentList := []components.Component{
-		platform.NewCNPGCluster(pctx),
-		platform.NewGateway(pctx),
-		platform.NewImgproxy(pctx),
-		platform.NewAnalytics(pctx),
-		platform.NewVector(pctx),
-		platform.NewSupavisor(pctx),
-		platform.NewStudio(pctx),
-	}
-
 	// Map component names to condition types
 	conditionMap := map[string]string{
 		"database":  supabasev1alpha1.ConditionDatabaseReady,
@@ -104,41 +96,54 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	hasError := false
 	allReady := true
+	dbReady := false
 
-	for _, comp := range componentList {
+	// Reconcile critical components first (DB, Gateway).
+	// If either fails, skip all downstream service components.
+	criticalComponents := []components.Component{
+		platform.NewCNPGCluster(pctx),
+		platform.NewGateway(pctx),
+	}
+
+	criticalFailed := false
+	for _, comp := range criticalComponents {
 		condType := conditionMap[comp.Name()]
-
-		// Reconcile component
-		result, err := comp.Reconcile(ctx)
-		if err != nil {
-			log.Error(err, "Failed to reconcile component", "component", comp.Name())
-			setCondition(sb, condType, metav1.ConditionFalse, "ReconcileError", err.Error())
+		ready, compErr := r.reconcileComponent(ctx, sb, comp, condType)
+		if compErr {
 			hasError = true
-			continue
+			criticalFailed = true
 		}
-
-		if result.RequeueAfter > 0 {
-			// Still processing, mark as not ready but not error
-			setCondition(sb, condType, metav1.ConditionFalse, "Reconciling", "Component is being reconciled")
-			allReady = false
-			continue
-		}
-
-		// Healthcheck component
-		ready, msg, err := comp.Healthcheck(ctx)
-		if err != nil {
-			log.Error(err, "Failed to healthcheck component", "component", comp.Name())
-			setCondition(sb, condType, metav1.ConditionFalse, "HealthcheckError", err.Error())
-			hasError = true
-			continue
-		}
-
-		if ready {
-			setCondition(sb, condType, metav1.ConditionTrue, "Ready", msg)
-		} else {
-			setCondition(sb, condType, metav1.ConditionFalse, "NotReady", msg)
+		if !ready {
 			allReady = false
 		}
+		if comp.Name() == "database" {
+			dbReady = ready
+		}
+	}
+
+	// Only reconcile service components if critical ones did not fail
+	if !criticalFailed {
+		serviceComponents := []components.Component{
+			platform.NewImgproxy(pctx),
+			platform.NewAnalytics(pctx),
+			platform.NewVector(pctx),
+			platform.NewSupavisor(pctx),
+			platform.NewStudio(pctx),
+		}
+
+		for _, comp := range serviceComponents {
+			condType := conditionMap[comp.Name()]
+			ready, compErr := r.reconcileComponent(ctx, sb, comp, condType)
+			if compErr {
+				hasError = true
+			}
+			if !ready {
+				allReady = false
+			}
+		}
+	} else {
+		// Mark downstream components as unknown since we skipped them
+		allReady = false
 	}
 
 	// Update status fields
@@ -146,7 +151,7 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	sb.Status.GatewayReady = isConditionTrue(sb, supabasev1alpha1.ConditionGatewayReady)
 
 	// Derive phase
-	phase := derivePhase(hasError, allReady)
+	phase := derivePhase(hasError, allReady, dbReady)
 	return r.updateStatus(ctx, sb, phase, nil)
 }
 
@@ -155,7 +160,76 @@ func (r *SupabaseReconciler) preflightChecks(ctx context.Context, sb *supabasev1
 	if err := r.List(ctx, clusterList, client.InNamespace(sb.Namespace), client.Limit(1)); err != nil {
 		return fmt.Errorf("preflight: cannot list CNPG Clusters (is the CRD installed?): %w", err)
 	}
+
+	gwList := &gatewayv1.GatewayList{}
+	if err := r.List(ctx, gwList, client.InNamespace(sb.Namespace), client.Limit(1)); err != nil {
+		return fmt.Errorf("preflight: cannot list Gateways (are Gateway API CRDs installed?): %w", err)
+	}
+
 	return nil
+}
+
+// reconcileComponent reconciles a single component and updates its condition.
+// Returns (ready, hasError).
+func (r *SupabaseReconciler) reconcileComponent(ctx context.Context, sb *supabasev1alpha1.Supabase, comp components.Component, condType string) (bool, bool) {
+	log := logf.FromContext(ctx)
+
+	result, err := comp.Reconcile(ctx)
+	if err != nil {
+		log.Error(err, "Failed to reconcile component", "component", comp.Name())
+		meta.SetStatusCondition(&sb.Status.Conditions, metav1.Condition{
+			Type:               condType,
+			Status:             metav1.ConditionFalse,
+			Reason:             "ReconcileError",
+			Message:            err.Error(),
+			ObservedGeneration: sb.Generation,
+		})
+		return false, true
+	}
+
+	if result.RequeueAfter > 0 {
+		meta.SetStatusCondition(&sb.Status.Conditions, metav1.Condition{
+			Type:               condType,
+			Status:             metav1.ConditionFalse,
+			Reason:             "Reconciling",
+			Message:            "Component is being reconciled",
+			ObservedGeneration: sb.Generation,
+		})
+		return false, false
+	}
+
+	ready, msg, err := comp.Healthcheck(ctx)
+	if err != nil {
+		log.Error(err, "Failed to healthcheck component", "component", comp.Name())
+		meta.SetStatusCondition(&sb.Status.Conditions, metav1.Condition{
+			Type:               condType,
+			Status:             metav1.ConditionFalse,
+			Reason:             "HealthcheckError",
+			Message:            err.Error(),
+			ObservedGeneration: sb.Generation,
+		})
+		return false, true
+	}
+
+	if ready {
+		meta.SetStatusCondition(&sb.Status.Conditions, metav1.Condition{
+			Type:               condType,
+			Status:             metav1.ConditionTrue,
+			Reason:             "Ready",
+			Message:            msg,
+			ObservedGeneration: sb.Generation,
+		})
+		return true, false
+	}
+
+	meta.SetStatusCondition(&sb.Status.Conditions, metav1.Condition{
+		Type:               condType,
+		Status:             metav1.ConditionFalse,
+		Reason:             "NotReady",
+		Message:            msg,
+		ObservedGeneration: sb.Generation,
+	})
+	return false, false
 }
 
 func (r *SupabaseReconciler) updateStatus(ctx context.Context, sb *supabasev1alpha1.Supabase, phase string, reconcileErr error) (ctrl.Result, error) {
@@ -167,50 +241,34 @@ func (r *SupabaseReconciler) updateStatus(ctx context.Context, sb *supabasev1alp
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, reconcileErr
+	switch phase {
+	case supabasev1alpha1.SupphaseReady:
+		return ctrl.Result{RequeueAfter: 5 * time.Minute}, reconcileErr
+	case supabasev1alpha1.SupphaseProvisioning, supabasev1alpha1.SupphaseDegraded:
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, reconcileErr
+	default:
+		return ctrl.Result{}, reconcileErr
+	}
 }
 
-func derivePhase(hasError, allReady bool) string {
-	if hasError {
+// derivePhase determines the overall phase from component states.
+// dbReady indicates whether the database (critical infrastructure) is healthy.
+func derivePhase(hasError, allReady, dbReady bool) string {
+	if hasError && !dbReady {
 		return supabasev1alpha1.SupphaseError
 	}
 	if allReady {
 		return supabasev1alpha1.SupphaseReady
 	}
+	// Database is ready but some other components are not
+	if dbReady && hasError {
+		return supabasev1alpha1.SupphaseDegraded
+	}
 	return supabasev1alpha1.SupphaseProvisioning
 }
 
-func setCondition(sb *supabasev1alpha1.Supabase, condType string, status metav1.ConditionStatus, reason, message string) {
-	now := metav1.Now()
-	for i, c := range sb.Status.Conditions {
-		if c.Type == condType {
-			if c.Status != status {
-				sb.Status.Conditions[i].LastTransitionTime = now
-			}
-			sb.Status.Conditions[i].Status = status
-			sb.Status.Conditions[i].Reason = reason
-			sb.Status.Conditions[i].Message = message
-			sb.Status.Conditions[i].ObservedGeneration = sb.Generation
-			return
-		}
-	}
-	sb.Status.Conditions = append(sb.Status.Conditions, metav1.Condition{
-		Type:               condType,
-		Status:             status,
-		LastTransitionTime: now,
-		Reason:             reason,
-		Message:            message,
-		ObservedGeneration: sb.Generation,
-	})
-}
-
 func isConditionTrue(sb *supabasev1alpha1.Supabase, condType string) bool {
-	for _, c := range sb.Status.Conditions {
-		if c.Type == condType {
-			return c.Status == metav1.ConditionTrue
-		}
-	}
-	return false
+	return meta.IsStatusConditionTrue(sb.Status.Conditions, condType)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -219,6 +277,7 @@ func (r *SupabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&supabasev1alpha1.Supabase{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
+		Owns(&corev1.ConfigMap{}).
 		Owns(&cnpgv1.Cluster{}).
 		Owns(&gatewayv1.Gateway{}).
 		Named("supabase").
