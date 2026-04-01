@@ -146,7 +146,7 @@ var _ = Describe("Supabase Operator E2E", Ordered, func() {
 				svc := svc
 				verifyDeployment := func(g Gomega) {
 					cmd := exec.Command("kubectl", "get", "deployment", "-n", supabaseNamespace,
-						"-l", fmt.Sprintf("app.kubernetes.io/name=%s", svc),
+						"-l", fmt.Sprintf("app.kubernetes.io/component=%s", svc),
 						"-o", "jsonpath={.items[*].metadata.name}")
 					output, err := utils.Run(cmd)
 					g.Expect(err).NotTo(HaveOccurred(), "Failed to get Deployment for %s", svc)
@@ -242,7 +242,7 @@ var _ = Describe("Supabase Operator E2E", Ordered, func() {
 				svc := svc
 				verifyDeployment := func(g Gomega) {
 					cmd := exec.Command("kubectl", "get", "deployment", "-n", tenantNamespace,
-						"-l", fmt.Sprintf("app.kubernetes.io/name=%s", svc),
+						"-l", fmt.Sprintf("app.kubernetes.io/component=%s", svc),
 						"-o", "jsonpath={.items[*].metadata.name}")
 					output, err := utils.Run(cmd)
 					g.Expect(err).NotTo(HaveOccurred(), "Failed to get Deployment for %s", svc)
@@ -312,7 +312,7 @@ var _ = Describe("Supabase Operator E2E", Ordered, func() {
 				svc := svc
 				verifyScaledDown := func(g Gomega) {
 					cmd := exec.Command("kubectl", "get", "deployment", "-n", tenantNamespace,
-						"-l", fmt.Sprintf("app.kubernetes.io/name=%s", svc),
+						"-l", fmt.Sprintf("app.kubernetes.io/component=%s", svc),
 						"-o", "jsonpath={.items[0].spec.replicas}")
 					output, err := utils.Run(cmd)
 					g.Expect(err).NotTo(HaveOccurred(), "Failed to get Deployment replicas for %s", svc)
