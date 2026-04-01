@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"context"
 	"testing"
 
 	v1alpha1 "github.com/codanael/supabase-operator/api/v1alpha1"
@@ -22,7 +23,7 @@ func TestScheduledBackup_NilBackupSpec(t *testing.T) {
 	c := NewScheduledBackup(pctx)
 
 	// Healthcheck should return true when backup is not configured
-	ready, msg, err := c.Healthcheck(nil)
+	ready, msg, err := c.Healthcheck(context.TODO())
 	assert.NoError(t, err)
 	assert.True(t, ready)
 	assert.Equal(t, "backup not configured", msg)

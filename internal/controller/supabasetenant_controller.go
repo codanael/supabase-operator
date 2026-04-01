@@ -187,7 +187,7 @@ func (r *SupabaseTenantReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if err := r.Status().Patch(ctx, tenantCR, statusPatch); err != nil {
 		log.Error(err, "Failed to patch tenant status")
-		reconcileResult = "error"
+		reconcileResult = reconcileResultError
 		return ctrl.Result{}, err
 	}
 

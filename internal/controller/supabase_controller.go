@@ -40,6 +40,8 @@ import (
 	custommetrics "github.com/codanael/supabase-operator/internal/metrics"
 )
 
+const reconcileResultError = "error"
+
 // SupabaseReconciler reconciles a Supabase object
 type SupabaseReconciler struct {
 	client.Client
@@ -83,7 +85,7 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	// Preflight: check that we can list CNPG clusters
 	if err := r.preflightChecks(ctx, sb); err != nil {
-		reconcileResult = "error"
+		reconcileResult = reconcileResultError
 		return r.updateStatus(ctx, sb, statusPatch, supabasev1alpha1.SupphaseError, err)
 	}
 
@@ -167,7 +169,7 @@ func (r *SupabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// Derive phase
 	phase := derivePhase(hasError, allReady, dbReady)
 	if hasError {
-		reconcileResult = "error"
+		reconcileResult = reconcileResultError
 	}
 	return r.updateStatus(ctx, sb, statusPatch, phase, nil)
 }

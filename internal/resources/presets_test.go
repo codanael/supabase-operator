@@ -37,8 +37,8 @@ func TestGetPreset_Large(t *testing.T) {
 func TestGetPreset_Custom(t *testing.T) {
 	custom := GetPreset(v1alpha1.ResourcePresetCustom)
 	assert.Equal(t, int32(1), custom.Replicas)
-	assert.True(t, custom.Resources.Requests == nil || len(custom.Resources.Requests) == 0)
-	assert.True(t, custom.Resources.Limits == nil || len(custom.Resources.Limits) == 0)
+	assert.True(t, len(custom.Resources.Requests) == 0)
+	assert.True(t, len(custom.Resources.Limits) == 0)
 }
 
 func TestGetPreset_Unknown(t *testing.T) {
