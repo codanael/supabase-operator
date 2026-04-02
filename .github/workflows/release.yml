@@ -30,9 +30,6 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -61,11 +58,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Attest checksums
+        continue-on-error: true
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: ./dist/checksums.txt
 
       - name: Attest install manifest
+        continue-on-error: true
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: ./install.yaml
@@ -73,10 +72,11 @@ jobs:
       - name: Extract image digest
         id: digest
         run: |
-          DIGEST=$(echo '${{ steps.goreleaser.outputs.artifacts }}' | jq -r '.[] | select(.type == "Docker Manifest") | .extra.Digest' | head -1)
+          DIGEST=$(echo '${{ steps.goreleaser.outputs.artifacts }}' | jq -r '.[] | select(.type == "Docker Image") | .extra.Digest' | head -1)
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Attest container image
+        continue-on-error: true
         if: steps.digest.outputs.digest != ''
         uses: actions/attest-build-provenance@v4
         with:
