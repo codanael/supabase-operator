@@ -72,7 +72,8 @@ jobs:
       - name: Extract image digest
         id: digest
         run: |
-          DIGEST=$(echo '${{ steps.goreleaser.outputs.artifacts }}' | jq -r '.[] | select(.type == "Docker Image") | .extra.Digest' | head -1)
+          VERSION=${GITHUB_REF_NAME#v}
+          DIGEST=$(docker buildx imagetools inspect ghcr.io/codanael/supabase-operator:${VERSION} --format '{{.Manifest.Digest}}')
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Attest container image

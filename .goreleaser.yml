@@ -15,22 +15,19 @@ builds:
       - -s
       - -w
 
-dockers:
-  - use: buildx
-    goos: linux
-    goarch: amd64
-    image_templates:
-      - "ghcr.io/codanael/supabase-operator:{{ .Version }}"
-      - "ghcr.io/codanael/supabase-operator:latest"
+dockers_v2:
+  - images:
+      - "ghcr.io/codanael/supabase-operator"
+    tags:
+      - "{{ .Version }}"
+      - latest
     dockerfile: Dockerfile.goreleaser
-    build_flag_templates:
-      - "--pull"
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source=https://github.com/codanael/supabase-operator"
+    labels:
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.title": "{{.ProjectName}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+      "org.opencontainers.image.source": "https://github.com/codanael/supabase-operator"
 
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
