@@ -1,0 +1,77 @@
+version: 2
+project_name: supabase-operator
+
+builds:
+  - id: manager
+    main: ./cmd/main.go
+    binary: manager
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s
+      - -w
+
+dockers:
+  - use: buildx
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - "ghcr.io/codanael/supabase-operator:{{ .Version }}-amd64"
+      - "ghcr.io/codanael/supabase-operator:latest-amd64"
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source=https://github.com/codanael/supabase-operator"
+  - use: buildx
+    goos: linux
+    goarch: arm64
+    image_templates:
+      - "ghcr.io/codanael/supabase-operator:{{ .Version }}-arm64"
+      - "ghcr.io/codanael/supabase-operator:latest-arm64"
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm64/v8"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source=https://github.com/codanael/supabase-operator"
+
+docker_manifests:
+  - name_template: "ghcr.io/codanael/supabase-operator:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/codanael/supabase-operator:{{ .Version }}-amd64"
+      - "ghcr.io/codanael/supabase-operator:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/codanael/supabase-operator:latest"
+    image_templates:
+      - "ghcr.io/codanael/supabase-operator:latest-amd64"
+      - "ghcr.io/codanael/supabase-operator:latest-arm64"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+
+release:
+  extra_files:
+    - glob: ./install.yaml

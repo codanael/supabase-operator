@@ -80,6 +80,7 @@ rules:
   resources:
   - clusters
   - databases
+  - scheduledbackups
   verbs:
   - create
   - delete
