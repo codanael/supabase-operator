@@ -73,7 +73,7 @@ jobs:
         id: digest
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          DIGEST=$(docker buildx imagetools inspect ghcr.io/codanael/supabase-operator:${VERSION} --format '{{.Manifest.Digest}}')
+          DIGEST=$(docker buildx imagetools inspect --raw ghcr.io/codanael/supabase-operator:${VERSION} | sha256sum | awk '{print "sha256:"$1}')
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Attest container image
