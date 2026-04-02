@@ -153,7 +153,6 @@ var _ = Describe("Supabase Operator E2E", Ordered, func() {
 	It("should create shared service Deployments", func() {
 		sharedServices := []string{"imgproxy", "studio", "analytics", "vector", "supavisor"}
 		for _, svc := range sharedServices {
-			svc := svc
 			verifyDeployment := func(g Gomega) {
 				cmd := exec.Command("kubectl", "get", "deployment", "-n", supabaseNamespace,
 					"-l", fmt.Sprintf("app.kubernetes.io/component=%s", svc),

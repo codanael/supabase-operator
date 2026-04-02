@@ -1,13 +1,14 @@
 name: E2E Tests
 
 on:
-  push:
   pull_request:
 
 jobs:
   test-e2e:
     name: Run on Ubuntu
     runs-on: ubuntu-latest
+    env:
+      KIND_CLUSTER: supabase-operator-test-e2e
     steps:
       - name: Clone the code
         uses: actions/checkout@v4
@@ -26,7 +27,25 @@ jobs:
       - name: Verify kind installation
         run: kind version
 
+      - name: Create kind cluster and install prerequisites
+        run: make kind-up
+
+      - name: Verify kind cluster is running
+        run: |
+          kind get clusters
+          kubectl cluster-info --context kind-${KIND_CLUSTER}
+          kubectl get nodes
+
+      - name: Build operator image and load into kind
+        run: |
+          make docker-build IMG=controller:latest
+          kind load docker-image controller:latest --name ${KIND_CLUSTER}
+
       - name: Running Test e2e
         run: |
           go mod tidy
           make test-e2e
+
+      - name: Teardown kind cluster
+        if: always()
+        run: make kind-down
