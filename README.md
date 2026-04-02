@@ -1,121 +1,151 @@
-# supabase-operator
-// TODO(user): Add simple overview of use/purpose
+# Supabase Operator
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+A Kubernetes operator that automates the deployment and management of [Supabase](https://supabase.com) infrastructure using a multi-tenant architecture.
 
-## Getting Started
+## Overview
 
-### Prerequisites
-- go version v1.24.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+The Supabase Operator manages two Custom Resources:
 
-### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
+- **`Supabase`** - Provisions shared platform infrastructure: a [CloudNativePG](https://cloudnative-pg.io/) PostgreSQL cluster, a [Gateway API](https://gateway-api.sigs.k8s.io/) gateway, and optional services (Studio, Imgproxy, Analytics, Vector, Supavisor).
+- **`SupabaseTenant`** - Provisions isolated tenants, each with their own namespace, database, Auth (GoTrue), PostgREST, Realtime, Storage, Edge Functions, and HTTP routing.
 
-```sh
-make docker-build docker-push IMG=<some-registry>/supabase-operator:tag
-```
+Each tenant gets:
+- A dedicated namespace (`supabase-<tenantId>`)
+- Auto-generated JWT keys and database credentials
+- An HTTP endpoint at `<tenantId>.<baseDomain>`
+- Independent lifecycle management (suspend, resume, delete)
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
+## Prerequisites
 
-**Install the CRDs into the cluster:**
+- Kubernetes v1.28+
+- [CloudNativePG](https://cloudnative-pg.io/) operator v1.25+
+- [Gateway API CRDs](https://gateway-api.sigs.k8s.io/) v1.2+
+- A Gateway API implementation (e.g., [Envoy Gateway](https://gateway.envoyproxy.io/) v1.3+)
 
-```sh
+See the [Administrator Guide](docs/admin-guide.md) for detailed prerequisite installation steps.
+
+## Quick Start
+
+### 1. Install the operator
+
+```bash
+# Build and push the operator image
+make docker-build docker-push IMG=<your-registry>/supabase-operator:v0.0.1
+
+# Install CRDs and deploy the operator
 make install
+make deploy IMG=<your-registry>/supabase-operator:v0.0.1
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+Or use the consolidated installer:
 
-```sh
-make deploy IMG=<some-registry>/supabase-operator:tag
+```bash
+make build-installer IMG=<your-registry>/supabase-operator:v0.0.1
+kubectl apply -f dist/install.yaml
 ```
 
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-privileges or be logged in as admin.
+### 2. Create a Supabase platform instance
 
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
-
-```sh
-kubectl apply -k config/samples/
+```yaml
+apiVersion: supabase.codanael.io/v1alpha1
+kind: Supabase
+metadata:
+  name: main
+  namespace: supabase-system
+spec:
+  database:
+    instances: 3
+    storage:
+      size: 10Gi
+  gateway:
+    gatewayClassName: envoy-gateway
+    baseDomain: supabase.example.com
 ```
 
->**NOTE**: Ensure that the samples has default values to test it out.
+### 3. Create a tenant
 
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
+```yaml
+apiVersion: supabase.codanael.io/v1alpha1
+kind: SupabaseTenant
+metadata:
+  name: acme
+  namespace: supabase-system
+spec:
+  tenantId: acme
+  supabaseRef: main
+  auth:
+    siteURL: https://app.acme.com
+    email:
+      enabled: true
+  storage:
+    backend: file
+  resources: small
 ```
 
-**Delete the APIs(CRDs) from the cluster:**
+```bash
+kubectl apply -f supabase.yaml
+kubectl apply -f tenant.yaml
 
-```sh
+# Watch status
+kubectl get supabase,supabasetenant -n supabase-system -w
+```
+
+## Documentation
+
+See the **[Administrator Guide](docs/admin-guide.md)** for complete documentation covering:
+
+- Detailed installation and prerequisites
+- Full configuration reference for both CRDs
+- Storage backends (file, S3, ObjectBucketClaim)
+- Authentication setup (email, SMTP, OAuth providers)
+- Automated database backups
+- Resource presets (small/medium/large)
+- Prometheus metrics and monitoring
+- Tenant lifecycle management (suspend/resume/delete)
+- Troubleshooting
+
+## Development
+
+### Build and test
+
+```bash
+# Build the operator binary
+make build
+
+# Run unit tests
+make test-unit
+
+# Run integration tests (requires envtest)
+make test
+
+# Run E2E tests (requires kind)
+make kind-up          # create kind cluster with CNPG + Gateway API
+make kind-load        # load operator image into kind
+make test-e2e         # run E2E tests
+make kind-down        # tear down kind cluster
+```
+
+### Run locally
+
+```bash
+make install          # install CRDs
+make run              # run the controller locally
+```
+
+## Uninstalling
+
+```bash
+kubectl delete supabasetenants --all -n supabase-system
+kubectl delete supabase --all -n supabase-system
+make undeploy
 make uninstall
 ```
 
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
-
-## Project Distribution
-
-Following the options to release and provide this solution to the users.
-
-### By providing a bundle with all YAML files
-
-1. Build the installer for the image built and published in the registry:
-
-```sh
-make build-installer IMG=<some-registry>/supabase-operator:tag
-```
-
-**NOTE:** The makefile target mentioned above generates an 'install.yaml'
-file in the dist directory. This file contains all the resources built
-with Kustomize, which are necessary to install this project without its
-dependencies.
-
-2. Using the installer
-
-Users can just run 'kubectl apply -f <URL for YAML BUNDLE>' to install
-the project, i.e.:
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/supabase-operator/<tag or branch>/dist/install.yaml
-```
-
-### By providing a Helm Chart
-
-1. Build the chart using the optional helm plugin
-
-```sh
-operator-sdk edit --plugins=helm/v1-alpha
-```
-
-2. See that a chart was generated under 'dist/chart', and users
-can obtain this solution from there.
-
-**NOTE:** If you change the project, you need to update the Helm Chart
-using the same command above to sync the latest changes. Furthermore,
-if you create webhooks, you need to use the above command with
-the '--force' flag and manually ensure that any custom configuration
-previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml'
-is manually re-applied afterwards.
-
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
 
-**NOTE:** Run `make help` for more information on all potential `make` targets
+Contributions are welcome. Run `make help` for all available Make targets.
 
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+More information on the operator framework: [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
 
 ## License
 
@@ -132,4 +162,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
