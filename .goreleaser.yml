@@ -18,6 +18,8 @@ builds:
 dockers_v2:
   - images:
       - "ghcr.io/codanael/supabase-operator"
+    platforms:
+      - linux/amd64
     tags:
       - "{{ .Version }}"
       - latest
