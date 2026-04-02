@@ -8,6 +8,8 @@ jobs:
   test-e2e:
     name: Run on Ubuntu
     runs-on: ubuntu-latest
+    env:
+      KIND_CLUSTER: supabase-operator-test-e2e
     steps:
       - name: Clone the code
         uses: actions/checkout@v4
@@ -26,7 +28,14 @@ jobs:
       - name: Verify kind installation
         run: kind version
 
+      - name: Create kind cluster and install prerequisites
+        run: make kind-up
+
       - name: Running Test e2e
         run: |
           go mod tidy
           make test-e2e
+
+      - name: Teardown kind cluster
+        if: always()
+        run: make kind-down

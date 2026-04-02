@@ -69,13 +69,6 @@ func (d *DatabaseComponent) buildCNPGDatabase() *cnpgv1.Database {
 func (d *DatabaseComponent) buildInitJob() (*batchv1.Job, error) {
 	labels := resources.TenantLabels(d.ctx.InstanceName(), d.ctx.TenantID(), componentDatabase)
 
-	// Get DB credentials from the context for init scripts
-	dbCredsKey := client.ObjectKey{
-		Namespace: d.ctx.TenantNamespace,
-		Name:      fmt.Sprintf("%s-db-credentials", d.ctx.TenantID()),
-	}
-	_ = dbCredsKey // used conceptually — passwords come from context
-
 	initSQL, err := database.CombinedInitSQL(database.InitParams{
 		DatabaseName:          d.ctx.DatabaseName,
 		JWTSecret:             d.ctx.JWTSecret,

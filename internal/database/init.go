@@ -35,7 +35,7 @@ func RenderInitScripts(params InitParams) ([]string, error) {
 		return entries[i].Name() < entries[j].Name()
 	})
 
-	var results []string
+	results := make([]string, 0, len(entries))
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
