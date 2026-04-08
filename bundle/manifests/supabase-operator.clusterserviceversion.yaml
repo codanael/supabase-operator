@@ -1,0 +1,596 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "supabase.codanael.io/v1alpha1",
+          "kind": "Supabase",
+          "metadata": {
+            "name": "main",
+            "namespace": "supabase-system"
+          },
+          "spec": {
+            "database": {
+              "instances": 1,
+              "imageName": "supabase/postgres:15.8.1.085",
+              "storage": {
+                "size": "10Gi"
+              }
+            },
+            "gateway": {
+              "gatewayClassName": "envoy-gateway",
+              "baseDomain": "supabase.local"
+            }
+          }
+        },
+        {
+          "apiVersion": "supabase.codanael.io/v1alpha1",
+          "kind": "SupabaseTenant",
+          "metadata": {
+            "name": "acme",
+            "namespace": "supabase-system"
+          },
+          "spec": {
+            "tenantId": "acme",
+            "supabaseRef": "main",
+            "auth": {
+              "siteURL": "https://app.acme.com",
+              "email": {
+                "enabled": true,
+                "autoconfirm": false
+              }
+            },
+            "storage": {
+              "backend": "file",
+              "imageTransformation": true
+            },
+            "functions": {
+              "verifyJWT": true
+            },
+            "resources": "small"
+          }
+        }
+      ]
+    capabilities: Deep Insights
+    categories: Database
+    containerImage: ghcr.io/codanael/supabase-operator:0.0.1
+    createdAt: "2026-04-08T00:00:00Z"
+    description: Deploy and manage Supabase instances on Kubernetes with multi-tenant support.
+    operators.operatorframework.io/builder: operator-sdk-v1.39.1
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+    repository: https://github.com/codanael/supabase-operator
+    support: codanael
+  name: supabase-operator.v0.0.1
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+      - description: >-
+          Supabase is the top-level resource that provisions the shared
+          infrastructure for a Supabase platform: database (CloudNativePG),
+          gateway (Kubernetes Gateway API), and optional services like Studio,
+          Imgproxy, Analytics, Vector, and Supavisor.
+        displayName: Supabase
+        kind: Supabase
+        name: supabases.supabase.codanael.io
+        version: v1alpha1
+        resources:
+          - kind: Deployment
+            name: ""
+            version: apps/v1
+          - kind: Service
+            name: ""
+            version: v1
+          - kind: ConfigMap
+            name: ""
+            version: v1
+          - kind: Secret
+            name: ""
+            version: v1
+          - kind: Gateway
+            name: ""
+            version: gateway.networking.k8s.io/v1
+          - kind: Cluster
+            name: ""
+            version: postgresql.cnpg.io/v1
+        specDescriptors:
+          - description: Database configuration for the Supabase platform.
+            displayName: Database
+            path: database
+          - description: Number of PostgreSQL instances.
+            displayName: Instances
+            path: database.instances
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:number
+          - description: PostgreSQL container image.
+            displayName: Image Name
+            path: database.imageName
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:text
+          - description: Persistent storage configuration for the database.
+            displayName: Storage
+            path: database.storage
+          - description: Gateway configuration for routing tenant traffic.
+            displayName: Gateway
+            path: gateway
+          - description: Kubernetes Gateway API class name.
+            displayName: Gateway Class Name
+            path: gateway.gatewayClassName
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:text
+          - description: Base domain for tenant routing.
+            displayName: Base Domain
+            path: gateway.baseDomain
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:text
+          - description: Imgproxy image resizing service configuration.
+            displayName: Imgproxy
+            path: imgproxy
+          - description: Supabase Studio dashboard configuration.
+            displayName: Studio
+            path: studio
+          - description: Analytics (Logflare) service configuration.
+            displayName: Analytics
+            path: analytics
+          - description: Vector log collection service configuration.
+            displayName: Vector
+            path: vector
+          - description: Supavisor connection pooler configuration.
+            displayName: Supavisor
+            path: supavisor
+          - description: Override default container images for platform components.
+            displayName: Image Overrides
+            path: images
+        statusDescriptors:
+          - description: Current phase of the Supabase platform.
+            displayName: Phase
+            path: phase
+            x-descriptors:
+              - urn:alm:descriptor:io.kubernetes.phase
+          - description: Whether the database is ready.
+            displayName: Database Ready
+            path: databaseReady
+            x-descriptors:
+              - urn:alm:descriptor:text
+          - description: Whether the gateway is ready.
+            displayName: Gateway Ready
+            path: gatewayReady
+            x-descriptors:
+              - urn:alm:descriptor:text
+          - description: Number of active tenants.
+            displayName: Tenant Count
+            path: tenantCount
+            x-descriptors:
+              - urn:alm:descriptor:text
+          - description: Conditions represent the latest available observations of the resource state.
+            displayName: Conditions
+            path: conditions
+            x-descriptors:
+              - urn:alm:descriptor:io.kubernetes.conditions
+      - description: >-
+          SupabaseTenant provisions a complete Supabase tenant on top of a
+          shared Supabase platform. Each tenant gets its own Auth (GoTrue),
+          REST API (PostgREST), Realtime, Storage, and Edge Functions services,
+          isolated in a dedicated namespace.
+        displayName: Supabase Tenant
+        kind: SupabaseTenant
+        name: supabasetenants.supabase.codanael.io
+        version: v1alpha1
+        resources:
+          - kind: Deployment
+            name: ""
+            version: apps/v1
+          - kind: Service
+            name: ""
+            version: v1
+          - kind: Secret
+            name: ""
+            version: v1
+          - kind: ConfigMap
+            name: ""
+            version: v1
+          - kind: HTTPRoute
+            name: ""
+            version: gateway.networking.k8s.io/v1
+          - kind: Job
+            name: ""
+            version: batch/v1
+        specDescriptors:
+          - description: Unique identifier for this tenant.
+            displayName: Tenant ID
+            path: tenantId
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:text
+          - description: Name of the parent Supabase resource.
+            displayName: Supabase Reference
+            path: supabaseRef
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:text
+          - description: Authentication (GoTrue) configuration.
+            displayName: Auth
+            path: auth
+          - description: REST API (PostgREST) configuration.
+            displayName: REST
+            path: rest
+          - description: Realtime service configuration.
+            displayName: Realtime
+            path: realtime
+          - description: Storage service configuration.
+            displayName: Storage
+            path: storage
+          - description: Edge Functions configuration.
+            displayName: Functions
+            path: functions
+          - description: Whether the tenant workloads are suspended (scaled to zero).
+            displayName: Suspended
+            path: suspended
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+          - description: Resource sizing preset for tenant workloads.
+            displayName: Resources
+            path: resources
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:select:small
+              - urn:alm:descriptor:com.tectonic.ui:select:medium
+              - urn:alm:descriptor:com.tectonic.ui:select:large
+              - urn:alm:descriptor:com.tectonic.ui:select:custom
+        statusDescriptors:
+          - description: Current phase of the tenant.
+            displayName: Phase
+            path: phase
+            x-descriptors:
+              - urn:alm:descriptor:io.kubernetes.phase
+          - description: Namespace where the tenant workloads are deployed.
+            displayName: Namespace
+            path: namespace
+            x-descriptors:
+              - urn:alm:descriptor:text
+          - description: Public endpoint URL for the tenant.
+            displayName: Endpoint
+            path: endpoint
+            x-descriptors:
+              - urn:alm:descriptor:org.w3:link
+          - description: Conditions represent the latest available observations of the resource state.
+            displayName: Conditions
+            path: conditions
+            x-descriptors:
+              - urn:alm:descriptor:io.kubernetes.conditions
+          - description: Readiness status of individual tenant components.
+            displayName: Components
+            path: components
+  description: |
+    ## Supabase Operator
+
+    The **Supabase Operator** automates the deployment and lifecycle management
+    of [Supabase](https://supabase.com) on Kubernetes and OpenShift clusters.
+
+    ### Features
+
+    - **Multi-Tenant Architecture**: Deploy a shared Supabase platform and
+      provision isolated tenants, each with their own Auth, REST API, Realtime,
+      Storage, and Edge Functions services.
+    - **CloudNativePG Integration**: Manages PostgreSQL clusters using the
+      CloudNativePG operator with automated backups and high availability.
+    - **Kubernetes Gateway API**: Routes tenant traffic through the standard
+      Gateway API, supporting any conformant implementation (Envoy Gateway,
+      Istio, etc.).
+    - **Tenant Isolation**: Each tenant runs in a dedicated Kubernetes namespace
+      with separate secrets, services, and network policies.
+    - **Suspend / Resume**: Scale tenant workloads to zero and back up with a
+      single field toggle.
+    - **Resource Presets**: Choose between small, medium, large, or custom
+      resource sizing for tenant workloads.
+    - **Image Overrides**: Customize container images for all Supabase
+      components.
+
+    ### Prerequisites
+
+    The following operators must be installed on the cluster before deploying
+    the Supabase Operator:
+
+    1. **CloudNativePG Operator** — manages PostgreSQL clusters
+    2. **A Gateway API implementation** — e.g., Envoy Gateway, Istio, or any
+       conformant provider
+    3. **Gateway API CRDs** — the Kubernetes Gateway API custom resource
+       definitions
+
+    ### Getting Started
+
+    1. Install the prerequisites listed above.
+    2. Install the Supabase Operator from OperatorHub.
+    3. Create a `Supabase` resource to provision the shared platform.
+    4. Create `SupabaseTenant` resources to provision isolated tenants.
+
+    See the [documentation](https://github.com/codanael/supabase-operator) for
+    detailed guides and examples.
+  displayName: Supabase Operator
+  icon:
+    - base64data: iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAACXBIWXMAAAsTAAALEwEAmpwYAAAGqElEQVR4nO2dW4hVVRjHf46XvOQlL5mamqaVaWZZWZlZZlG+FBVlUUQP0UNBQVBRERFBPURBPUREb0VPUfQQFWUX0kzN7GJpmZqaqeM4OjqO46X+8e3DPnP2mTn77LP3Wmuv/w/+MDN7Zq/1/9b61ndbey9oampCqJcOsRsgxEUIoHKEACpHCKByhAAqRwigcoQAKkcIoHKEACpHCKByhAAqRwigcoQAKkcIoHKEACpHCKByhAAqRwigcoQAKkcIoHKEACpHCKByhAAqRwigcoQAKkcIoHKEACpHCKByhAAqJ+0C6AzMAS4BzgbGAn2BbsCuwpd8AnwMvA+sBvambEPVSKsAugK3A7cBw5P8jlHAlcBW4G/gJeBhYH8KtlSNNE4B/YAngNuBEa1877HAncBLwG9p2FENUiWAfsBcYDbQK+bvOAm4DViUqFUVIE0CmA/MSnB7OQGUD4fLaUMipEUAfYBXgRkJb7czcCkwCpiX8LYdIy0COAfLz4elZPszgUuAR1PafiKkRQAPAielaPu98P5CLBgpE0ClSYsArkvhtnsDPwF/Yq7kBqAB2A00FX4+AvQA+gEjgfHASKBnCjZVhbQI4NyUbfdjYCawPeb3dwQuAK7E4gk9krYsSdIigF6kI1K4CrgCWF3F9+/H8g2vAOdiU9SxiVqXICH3AdqyHMsDXEV1g5/LAOBm4D2EAInyIrA0RduvBWZX8f3tsYi0kYJEMEcBN2A5h7uxnIML1GMpakcIqwCmAN8An2KhYBecgwVNXOCMsJ9IhQD+wYp2M4DVOOfKwn/nCkIAruBMzMi+O2Tb/h4rK+cGIQBXOAKY69qIFAnAFV7Goo+u0QUz5a8D/naF4zCX0wUeBD50bUQRIQBHaAKedjwFiABcoQF4AWh0bUgRIQBHOAQ8h/slYBEhAEdYD9yP+yViESEAR2jCysU/uDakiJBPAW9hSSZXaMLK1VuxorVLhHwKaAR2YBnIPY7tCPkU0AhsB+pxJ1EmBOAIBzGvuxN37r8IE4AjHAa2YJnIXY7tCPk+QCPmAepxJ0IXBOAIjVhZuR7Lxu1xbE/Ip4BG4F8sF/APY7tCLkAijmBP/EIoitkXQCuPA+gmJCfhBVPn+1EKDh/0F4GFjkJW/Y1YHGSBux8qA8e3iA+7ASuZ3BXnr1T7P7fK/D7yEfYBxgI/AM7gYuB8bhzKhTyEXAPVhBaBnwBfAN8hN0hPC3mtnwTQC3mgfIA72Ep2l+Bv8P+/wEOB1VFM72pGwAAAABJRU5ErkJggg==
+      mediatype: image/png
+  install:
+    spec:
+      clusterPermissions:
+        - rules:
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps
+                - namespaces
+                - secrets
+                - services
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - ""
+              resources:
+                - events
+              verbs:
+                - create
+                - patch
+            - apiGroups:
+                - apps
+              resources:
+                - deployments
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - batch
+              resources:
+                - jobs
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - gateway.networking.k8s.io
+              resources:
+                - gateways
+                - httproutes
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - networking.k8s.io
+              resources:
+                - networkpolicies
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - postgresql.cnpg.io
+              resources:
+                - clusters
+                - databases
+                - scheduledbackups
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - supabase.codanael.io
+              resources:
+                - supabases
+                - supabasetenants
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - supabase.codanael.io
+              resources:
+                - supabases/finalizers
+                - supabasetenants/finalizers
+              verbs:
+                - update
+            - apiGroups:
+                - supabase.codanael.io
+              resources:
+                - supabases/status
+                - supabasetenants/status
+              verbs:
+                - get
+                - patch
+                - update
+            - apiGroups:
+                - authentication.k8s.io
+              resources:
+                - tokenreviews
+              verbs:
+                - create
+            - apiGroups:
+                - authorization.k8s.io
+              resources:
+                - subjectaccessreviews
+              verbs:
+                - create
+          serviceAccountName: supabase-operator-controller-manager
+      deployments:
+        - label:
+            control-plane: controller-manager
+            app.kubernetes.io/name: supabase-operator
+            app.kubernetes.io/managed-by: kustomize
+          name: supabase-operator-controller-manager
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                control-plane: controller-manager
+                app.kubernetes.io/name: supabase-operator
+            template:
+              metadata:
+                annotations:
+                  kubectl.kubernetes.io/default-container: manager
+                labels:
+                  control-plane: controller-manager
+                  app.kubernetes.io/name: supabase-operator
+              spec:
+                containers:
+                  - args:
+                      - --leader-elect
+                      - --health-probe-bind-address=:8081
+                    command:
+                      - /manager
+                    image: ghcr.io/codanael/supabase-operator:0.0.1
+                    imagePullPolicy: IfNotPresent
+                    livenessProbe:
+                      httpGet:
+                        path: /healthz
+                        port: 8081
+                      initialDelaySeconds: 15
+                      periodSeconds: 20
+                    name: manager
+                    readinessProbe:
+                      httpGet:
+                        path: /readyz
+                        port: 8081
+                      initialDelaySeconds: 5
+                      periodSeconds: 10
+                    resources:
+                      limits:
+                        cpu: 500m
+                        memory: 128Mi
+                      requests:
+                        cpu: 10m
+                        memory: 64Mi
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop:
+                          - ALL
+                securityContext:
+                  runAsNonRoot: true
+                  seccompProfile:
+                    type: RuntimeDefault
+                serviceAccountName: supabase-operator-controller-manager
+                terminationGracePeriodSeconds: 10
+      permissions:
+        - rules:
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps
+              verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+            - apiGroups:
+                - coordination.k8s.io
+              resources:
+                - leases
+              verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+            - apiGroups:
+                - ""
+              resources:
+                - events
+              verbs:
+                - create
+                - patch
+          serviceAccountName: supabase-operator-controller-manager
+    strategy: deployment
+  installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+  keywords:
+    - supabase
+    - database
+    - postgres
+    - baas
+    - backend-as-a-service
+    - multi-tenant
+    - api
+    - auth
+    - storage
+    - realtime
+  links:
+    - name: GitHub Repository
+      url: https://github.com/codanael/supabase-operator
+    - name: Supabase
+      url: https://supabase.com
+  maintainers:
+    - email: codanael@users.noreply.github.com
+      name: codanael
+  maturity: alpha
+  minKubeVersion: "1.28.0"
+  provider:
+    name: codanael
+    url: https://github.com/codanael
+  relatedImages:
+    - image: ghcr.io/codanael/supabase-operator:0.0.1
+      name: manager
+    - image: supabase/postgres:15.8.1.085
+      name: supabase-postgres
+    - image: supabase/gotrue:v2.186.0
+      name: supabase-auth
+    - image: postgrest/postgrest:v14.6
+      name: supabase-rest
+    - image: supabase/realtime:v2.76.5
+      name: supabase-realtime
+    - image: supabase/storage-api:v1.44.2
+      name: supabase-storage
+    - image: supabase/edge-runtime:v1.71.2
+      name: supabase-functions
+    - image: supabase/studio:2026.03.16-sha-5528817
+      name: supabase-studio
+    - image: darthsim/imgproxy:v3.30.1
+      name: imgproxy
+    - image: supabase/logflare:1.31.2
+      name: supabase-analytics
+    - image: timberio/vector:0.53.0-alpine
+      name: vector
+    - image: supabase/supavisor:2.7.4
+      name: supavisor
+  version: 0.0.1

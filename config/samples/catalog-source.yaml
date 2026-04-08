@@ -1,0 +1,42 @@
+# Example CatalogSource to test the Supabase Operator on OpenShift
+# before submitting to community-operators.
+#
+# Usage:
+#   kubectl apply -f config/samples/catalog-source.yaml
+#
+# Then navigate to the OpenShift console -> OperatorHub and search for "Supabase".
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: supabase-operator-catalog
+  namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: ghcr.io/codanael/supabase-operator-catalog:v0.0.1
+  displayName: Supabase Operator
+  publisher: codanael
+  updateStrategy:
+    registryPoll:
+      interval: 30m
+---
+# OperatorGroup to allow the operator to watch all namespaces.
+# Create this in the namespace where you want the operator installed.
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: supabase-operator-group
+  namespace: supabase-operator-system
+spec: {}
+---
+# Subscription to install the operator from the catalog.
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: supabase-operator
+  namespace: supabase-operator-system
+spec:
+  channel: alpha
+  name: supabase-operator
+  source: supabase-operator-catalog
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
